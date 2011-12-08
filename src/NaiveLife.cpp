@@ -20,9 +20,9 @@
 #include <cstdlib>
 
 #include <QMutex>
-#include <QThreadPool>
 
 #include "AlgorithmManager.h"
+#include "CanvasPainter.h"
 #include "NaiveLife.h"
 
 REGISTER_ALGORITHM(NaiveLife)
@@ -43,7 +43,7 @@ int NaiveLife::grid(int x, int y)
 	return ret;
 }
 
-void NaiveLife::setGrid(int x, int y, int state)
+void NaiveLife::setGrid(const BigInteger &x, const BigInteger &y, int state)
 {
 	m_lock->lock();
 	if (x < m_x || (x - m_x >= m_w) || y < m_y || (y - m_y >= m_h))
@@ -67,7 +67,7 @@ void NaiveLife::getRect(int *x, int *y, int *w, int *h)
 	*h = m_h;
 }
 
-void NaiveLife::setRect(int x, int y, int w, int h)
+void NaiveLife::setRect(const BigInteger &x, const BigInteger &y, const BigInteger &w, const BigInteger &h)
 {
 	m_x = x;
 	m_y = y;
@@ -77,6 +77,14 @@ void NaiveLife::setRect(int x, int y, int w, int h)
 	m_grid = (int *) realloc(m_grid, m_gridSize);
 	emit rectChanged();
 	clearGrid();
+}
+
+void NaiveLife::paint(CanvasPainter *painter, const BigInteger &x, const BigInteger &y, int w, int h)
+{
+	int my_x = x - m_x, my_y = y - m_y;
+	for (int i = 0; i < w; i++)
+		for (int j = 0; j < h; j++)
+			painter->drawGrid(i, j, m_grid[GRID(my_x + i, my_y + j)]);
 }
 
 void NaiveLife::runStep()

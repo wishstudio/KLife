@@ -17,19 +17,21 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-#ifndef MAINCANVAS_H
-#define MAINCANVAS_H
+#ifndef EDITOR_H
+#define EDITOR_H
 
 #include <QWidget>
 
+#include "BigInteger.h"
+
 class QScrollBar;
-class MainCanvas: public QWidget
+class Editor: public QWidget
 {
 	Q_OBJECT
 
 public:
-	MainCanvas(QWidget *parent = 0);
-	virtual ~MainCanvas();
+	Editor(QWidget *parent = 0);
+	virtual ~Editor();
 
 public slots:
 	void rectChanged();
@@ -45,8 +47,10 @@ private:
 	QWidget *m_canvas;
 	QScrollBar *m_vertScroll, *m_horiScroll;
 
-	int m_x, m_y, m_scale;
-	int m_rect_x1, m_rect_y1, m_rect_x2, m_rect_y2;
+	BigInteger m_rect_x1, m_rect_y1, m_rect_x2, m_rect_y2;
+	BigInteger m_view_x, m_view_y;
+	int m_scale, m_scalePixel, m_vertGridCount, m_horiGridCount;
+	BigInteger m_scrollStep;
 };
 
 #endif

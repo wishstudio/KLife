@@ -17,40 +17,22 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-#include <KApplication>
-#include <KAction>
-#include <KActionCollection>
-#include <KLocale>
-#include <KStandardAction>
+#ifndef CANVASPAINTER_H
+#define CANVASPAINTER_H
 
-#include "AbstractAlgorithm.h"
-#include "AlgorithmManager.h"
-#include "Editor.h"
-#include "MainWindow.h"
+#include <QPainter>
 
-MainWindow::MainWindow(QWidget *parent)
-	: KXmlGuiWindow(parent)
+class BigInteger;
+class CanvasPainter: public QPainter
 {
-	AlgorithmManager::algorithm()->setRect(0, 0, 300, 300);
-	canvas = new Editor(this);
-	setCentralWidget(canvas);
-	setupActions();
-}
+public:
+	CanvasPainter(QPaintDevice *device, const BigInteger &view_x, const BigInteger &view_y, int x1, int x2, int y1, int y2, int scalePixel);
+	virtual ~CanvasPainter();
 
-MainWindow::~MainWindow()
-{
-	delete canvas;
-}
+	void drawGrid(int x, int y, int state);
 
-void MainWindow::setupActions()
-{
-	KAction *newAction = new KAction(this);
-	newAction->setText(i18n("&New..."));
-	newAction->setIcon(KIcon("document-new"));
-	newAction->setShortcut(Qt::CTRL + Qt::Key_N);
-	actionCollection()->addAction("new", newAction);
+private:
+	int m_scalePixel, m_x, m_y;
+};
 
-	KStandardAction::quit(kapp, SLOT(quit()), actionCollection());
-
-	setupGUI();
-}
+#endif

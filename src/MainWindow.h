@@ -22,7 +22,7 @@
 
 #include <KXmlGuiWindow>
 
-class MainCanvas;
+class Editor;
 class MainWindow: public KXmlGuiWindow
 {
 	Q_OBJECT
@@ -34,7 +34,7 @@ public:
 private:
 	void setupActions();
 
-	MainCanvas *canvas;
+	Editor *canvas;
 };
 
 #endif

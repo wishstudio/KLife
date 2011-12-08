@@ -32,10 +32,14 @@
 
 #include "AbstractAlgorithm.h"
 #include "AlgorithmManager.h"
-#include "MainCanvas.h"
+#include "CanvasPainter.h"
+#include "Editor.h"
 
-MainCanvas::MainCanvas(QWidget *parent)
-	: QWidget(parent), m_x(0), m_y(0), m_scale(16), m_rect_x1(0), m_rect_y1(0), m_rect_x2(0), m_rect_y2(0)
+static const int scalePixelCnt = 4;
+static const int scalePixel[5] = {1, 2, 4, 8, 16};
+
+Editor::Editor(QWidget *parent)
+	: QWidget(parent), m_rect_x1(0), m_rect_y1(0), m_rect_x2(0), m_rect_y2(0), m_view_x(0), m_view_y(0), m_scale(-scalePixelCnt), m_scrollStep(1)
 {
 	QToolBar *toolbar = new QToolBar();
 	KAction *stepAction = new KAction(this);
@@ -73,15 +77,22 @@ MainCanvas::MainCanvas(QWidget *parent)
 	setLayout(layout);
 }
 
-MainCanvas::~MainCanvas()
+Editor::~Editor()
 {
 	delete m_canvas;
 }
 
-void MainCanvas::rectChanged()
+void Editor::rectChanged()
 {
 	int x, y, w, h;
 	AlgorithmManager::algorithm()->getRect(&x, &y, &w, &h);
+	if (m_scale >= 0)
+		m_scalePixel = 1;
+	else
+		m_scalePixel = scalePixel[-m_scale];
+	m_vertGridCount = m_canvas->height() / m_scalePixel;
+	m_horiGridCount = m_canvas->width() / m_scalePixel;
+	m_scrollStep = scalePixel[scalePixelCnt] / m_scalePixel;
 	if (AlgorithmManager::algorithm()->isVerticalInfinity())
 	{
 		m_vertScroll->setMinimum(-100);
@@ -91,8 +102,8 @@ void MainCanvas::rectChanged()
 	}
 	else
 	{
-		m_vertScroll->setMinimum(y - m_canvas->height() / m_scale + 1);
-		m_vertScroll->setMaximum(y + h - 1);
+		m_vertScroll->setMinimum(0);
+		m_vertScroll->setMaximum(h / m_scrollStep);
 		m_vertScroll->setSliderPosition(0);
 	}
 
@@ -105,8 +116,8 @@ void MainCanvas::rectChanged()
 	}
 	else
 	{
-		m_horiScroll->setMinimum(x - m_canvas->width() / m_scale + 1);
-		m_horiScroll->setMaximum(x + w - 1);
+		m_horiScroll->setMinimum(0);
+		m_horiScroll->setMaximum(w / m_scrollStep);
 		m_horiScroll->setSliderPosition(0);
 	}
 	m_rect_x1 = x;
@@ -115,12 +126,12 @@ void MainCanvas::rectChanged()
 	m_rect_y2 = y + h - 1;
 }
 
-void MainCanvas::resizeEvent(QResizeEvent *)
+void Editor::resizeEvent(QResizeEvent *)
 {
 	rectChanged();
 }
 
-void MainCanvas::scrollChanged(int)
+void Editor::scrollChanged(int)
 {
 	QScrollBar *scrollBar = qobject_cast<QScrollBar *>(sender());
 	if (!scrollBar->isSliderDown() && AlgorithmManager::algorithm()->isInfinity(scrollBar->orientation()))
@@ -131,19 +142,19 @@ void MainCanvas::scrollChanged(int)
 	}
 	// Vertical
 	if (!AlgorithmManager::algorithm()->isVerticalInfinity())
-		m_y = m_vertScroll->sliderPosition();
+		m_view_y = m_rect_x1 + BigInteger(m_vertScroll->sliderPosition()) * m_scrollStep;
 	// Horizontal
 	if (!AlgorithmManager::algorithm()->isHorizontalInfinity())
-		m_x = m_horiScroll->sliderPosition();
+		m_view_x = m_rect_y1 + BigInteger(m_horiScroll->sliderPosition()) * m_scrollStep;
 	emit update();
 }
 
-void MainCanvas::scrollReleased()
+void Editor::scrollReleased()
 {
 	scrollChanged(qobject_cast<QScrollBar *>(sender())->sliderPosition());
 }
 
-bool MainCanvas::eventFilter(QObject *obj, QEvent *event)
+bool Editor::eventFilter(QObject *obj, QEvent *event)
 {
 	if (obj == m_canvas)
 	{
@@ -151,44 +162,20 @@ bool MainCanvas::eventFilter(QObject *obj, QEvent *event)
 		{
 		case QEvent::Paint:
 		{
-			QPainter painter(m_canvas);
-			painter.fillRect(m_canvas->rect(), QColor(0x80, 0x80, 0x80));
-			// Draw grid
-			int y1 = 0, y2 = m_canvas->height() / m_scale;
+			// Calculate grid size
+			int y1 = 0, y2 = m_vertGridCount;
 			if (!AlgorithmManager::algorithm()->isVerticalInfinity())
 			{
-				y1 = qMax(y1, m_rect_y1 - m_y);
-				y2 = qMin(y2, m_rect_y2 - m_y);
+				y1 = qMax(y1, (int) (m_rect_y1 - m_view_y));
+				y2 = qMin(y2, (int) (m_rect_y2 - m_view_y));
 			}
-			int x1 = 0, x2 = m_canvas->width() / m_scale;
+			int x1 = 0, x2 = m_horiGridCount;
 			if (!AlgorithmManager::algorithm()->isHorizontalInfinity())
 			{
-				x1 = qMax(x1, m_rect_x1 - m_x);
-				x2 = qMin(x2, m_rect_x2 - m_x);
+				x1 = qMax(x1, (int) (m_rect_x1 - m_view_x));
+				x2 = qMin(x2, (int) (m_rect_x2 - m_view_x));
 			}
-			for (int x = x1; x <= x2; x++)
-				for (int y = y1; y <= y2; y++)
-				{
-					QColor fillColor;
-					if (AlgorithmManager::algorithm()->grid(x + m_x, y + m_y))
-						fillColor = Qt::white;
-					else
-						fillColor = QColor(0x30, 0x30, 0x30);
-					painter.fillRect(x * m_scale, y * m_scale, m_scale, m_scale, fillColor);
-				}
-			// Draw vertical grid line
-			//int j = 0;
-			for (int i = x1; i < x2; i++)
-			{
-				painter.setPen((i + 1 + m_x) % 10 == 0? QColor(0x70, 0x70, 0x70): QColor(0x50, 0x50, 0x50));
-				painter.drawLine((i + 1) * m_scale - 1, y1 * m_scale, (i + 1) * m_scale - 1, (y2 + 1) * m_scale - 1);
-			}
-			// Draw horizontal grid line
-			for (int i = y1; i < y2; i++)
-			{
-				painter.setPen((i + 1 + m_y) % 10 == 0? QColor(0x70, 0x70, 0x70): QColor(0x50, 0x50, 0x50));
-				painter.drawLine(x1 * m_scale, (i + 1) * m_scale - 1, (x2 + 1) * m_scale - 1, (i + 1) * m_scale - 1);
-			}
+			CanvasPainter painter(m_canvas, m_view_x, m_view_y, x1, x2, y1, y2, m_scalePixel);
 			break;
 		}
 
@@ -196,7 +183,7 @@ bool MainCanvas::eventFilter(QObject *obj, QEvent *event)
 		case QEvent::MouseButtonPress:
 		{
 			QMouseEvent *e = static_cast<QMouseEvent *>(event);
-			int x = m_x + e->x() / m_scale, y = m_y + e->y() / m_scale;
+			BigInteger x = m_view_x + e->x() / m_scalePixel, y = m_view_y + e->y() / m_scalePixel;
 			bool inRange = true;
 			if (!AlgorithmManager::algorithm()->isVerticalInfinity())
 				inRange &= m_rect_x1 <= x && x <= m_rect_x2;
@@ -210,10 +197,19 @@ bool MainCanvas::eventFilter(QObject *obj, QEvent *event)
 		case QEvent::Wheel:
 		{
 			QWheelEvent *e = static_cast<QWheelEvent *>(event);
-			if (e->orientation() == Qt::Vertical)
-				QApplication::sendEvent(m_vertScroll, e);
+			if (e->modifiers() & Qt::ControlModifier)
+			{
+				m_scale = qMax(-scalePixelCnt, m_scale + e->delta() / 120);
+				rectChanged();
+				emit update();
+			}
 			else
-				QApplication::sendEvent(m_horiScroll, e);
+			{
+				if (e->orientation() == Qt::Vertical)
+					QApplication::sendEvent(m_vertScroll, e);
+				else
+					QApplication::sendEvent(m_horiScroll, e);
+			}
 			break;
 		}
 
