@@ -39,7 +39,7 @@ static const int scalePixelCnt = 4;
 static const int scalePixel[5] = {1, 2, 4, 8, 16};
 
 Editor::Editor(QWidget *parent)
-	: QWidget(parent), m_rect_x1(0), m_rect_y1(0), m_rect_x2(0), m_rect_y2(0), m_view_x(0), m_view_y(0), m_scale(-scalePixelCnt), m_scrollStep(1)
+	: QWidget(parent), m_rect_x1(0), m_rect_y1(0), m_rect_x2(0), m_rect_y2(0), m_view_x(0), m_view_y(0), m_scale(-scalePixelCnt), m_scalePixel(scalePixel[scalePixelCnt])
 {
 	QToolBar *toolbar = new QToolBar();
 	KAction *stepAction = new KAction(this);
@@ -64,6 +64,7 @@ Editor::Editor(QWidget *parent)
 	connect(m_horiScroll, SIGNAL(sliderReleased()), this, SLOT(scrollReleased()));
 
 	rectChanged();
+	resetViewPoint();
 	connect(AlgorithmManager::self(), SIGNAL(rectChanged()), this, SLOT(rectChanged()));
 	connect(AlgorithmManager::self(), SIGNAL(gridChanged()), m_canvas, SLOT(update()));
 
@@ -84,15 +85,21 @@ Editor::~Editor()
 
 void Editor::rectChanged()
 {
-	int x, y, w, h;
-	AlgorithmManager::algorithm()->getRect(&x, &y, &w, &h);
-	if (m_scale >= 0)
-		m_scalePixel = 1;
-	else
-		m_scalePixel = scalePixel[-m_scale];
+	BigInteger x, y;
+	AlgorithmManager::algorithm()->getRect(&x, &y, &m_rect_w, &m_rect_h);
+	m_rect_x1 = x;
+	m_rect_y1 = y;
+	m_rect_x2 = x + m_rect_w - 1;
+	m_rect_y2 = y + m_rect_h - 1;
+	viewResized();
+}
+
+void Editor::viewResized()
+{
 	m_vertGridCount = m_canvas->height() / m_scalePixel;
 	m_horiGridCount = m_canvas->width() / m_scalePixel;
-	m_scrollStep = scalePixel[scalePixelCnt] / m_scalePixel;
+	m_vertEdgeSpacing = m_horiEdgeSpacing = 5;
+	disconnect(m_vertScroll, SIGNAL(valueChanged(int)), this, SLOT(scrollChanged(int)));
 	if (AlgorithmManager::algorithm()->isVerticalInfinity())
 	{
 		m_vertScroll->setMinimum(-100);
@@ -103,10 +110,12 @@ void Editor::rectChanged()
 	else
 	{
 		m_vertScroll->setMinimum(0);
-		m_vertScroll->setMaximum(h / m_scrollStep);
+		m_vertScroll->setMaximum(m_rect_h - m_vertGridCount + m_vertEdgeSpacing * 2);
 		m_vertScroll->setSliderPosition(0);
 	}
+	connect(m_vertScroll, SIGNAL(valueChanged(int)), this, SLOT(scrollChanged(int)));
 
+	disconnect(m_horiScroll, SIGNAL(valueChanged(int)), this, SLOT(scrollChanged(int)));
 	if (AlgorithmManager::algorithm()->isHorizontalInfinity())
 	{
 		m_horiScroll->setMinimum(-100);
@@ -117,18 +126,17 @@ void Editor::rectChanged()
 	else
 	{
 		m_horiScroll->setMinimum(0);
-		m_horiScroll->setMaximum(w / m_scrollStep);
+		m_horiScroll->setMaximum(m_rect_w - m_horiGridCount + m_horiEdgeSpacing * 2);
 		m_horiScroll->setSliderPosition(0);
 	}
-	m_rect_x1 = x;
-	m_rect_y1 = y;
-	m_rect_x2 = x + w - 1;
-	m_rect_y2 = y + h - 1;
+	connect(m_horiScroll, SIGNAL(valueChanged(int)), this, SLOT(scrollChanged(int)));
+	resetViewPoint();
 }
 
 void Editor::resizeEvent(QResizeEvent *)
 {
-	rectChanged();
+	viewResized();
+	emit update();
 }
 
 void Editor::scrollChanged(int)
@@ -140,18 +148,64 @@ void Editor::scrollChanged(int)
 			return;
 		scrollBar->setSliderPosition(0);
 	}
-	// Vertical
-	if (!AlgorithmManager::algorithm()->isVerticalInfinity())
-		m_view_y = m_rect_x1 + BigInteger(m_vertScroll->sliderPosition()) * m_scrollStep;
-	// Horizontal
-	if (!AlgorithmManager::algorithm()->isHorizontalInfinity())
-		m_view_x = m_rect_y1 + BigInteger(m_horiScroll->sliderPosition()) * m_scrollStep;
+	scrollView(scrollBar->orientation());
 	emit update();
 }
 
 void Editor::scrollReleased()
 {
 	scrollChanged(qobject_cast<QScrollBar *>(sender())->sliderPosition());
+}
+
+void Editor::scrollView(Qt::Orientation orientation)
+{
+	if (orientation == Qt::Vertical)
+	{
+		if (!AlgorithmManager::algorithm()->isVerticalInfinity())
+			m_view_y = m_rect_y1 + BigInteger(m_vertScroll->sliderPosition()) - m_vertEdgeSpacing;
+	}
+	else
+	{
+		if (!AlgorithmManager::algorithm()->isHorizontalInfinity())
+			m_view_x = m_rect_x1 + BigInteger(m_horiScroll->sliderPosition()) - m_horiEdgeSpacing;
+	}
+}
+
+void Editor::setViewPoint(const BigInteger &x, const BigInteger &y)
+{
+	if (!AlgorithmManager::algorithm()->isVerticalInfinity())
+		m_vertScroll->setSliderPosition(y - m_rect_y1 + m_vertEdgeSpacing);
+	else
+		m_view_y = y;
+
+	if (!AlgorithmManager::algorithm()->isHorizontalInfinity())
+		m_horiScroll->setSliderPosition(x - m_rect_x1 + m_horiEdgeSpacing);
+	else
+		m_view_x = x;
+}
+
+void Editor::resetViewPoint()
+{
+	setViewPoint(m_view_x, m_view_y);
+}
+
+void Editor::scaleView(int scale, int anchor_x, int anchor_y)
+{
+	if (scale != m_scale)
+	{
+		int old_scalePixel = m_scalePixel;
+		if ((m_scale = scale) >= 0)
+			m_scalePixel = 1;
+		else
+			m_scalePixel = scalePixel[-m_scale];
+		m_view_y += anchor_y - anchor_y * old_scalePixel / m_scalePixel;
+		if (!AlgorithmManager::algorithm()->isVerticalInfinity())
+			m_view_y = qBound(m_rect_y1, m_view_y, m_rect_y2);
+		m_view_x += anchor_x - anchor_x * old_scalePixel / m_scalePixel;
+		if (!AlgorithmManager::algorithm()->isHorizontalInfinity())
+			m_view_x = qBound(m_rect_x1, m_view_x, m_rect_x2);
+		viewResized();
+	}
 }
 
 bool Editor::eventFilter(QObject *obj, QEvent *event)
@@ -197,10 +251,10 @@ bool Editor::eventFilter(QObject *obj, QEvent *event)
 		case QEvent::Wheel:
 		{
 			QWheelEvent *e = static_cast<QWheelEvent *>(event);
-			if (e->modifiers() & Qt::ControlModifier)
+			if (e->modifiers() & Qt::ControlModifier) // Scale view
 			{
-				m_scale = qMax(-scalePixelCnt, m_scale + e->delta() / 120);
-				rectChanged();
+				BigInteger old_scalePixel = m_scalePixel;
+				scaleView(qMax(-scalePixelCnt, m_scale - e->delta() / 120), e->x() / m_scalePixel, e->y() / m_scalePixel);
 				emit update();
 			}
 			else

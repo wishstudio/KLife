@@ -48,7 +48,7 @@ public:
 	BigInteger& operator -= (int num);
 
 	BigInteger operator * (int num) const;
-	BigInteger operator % (int num) const;
+	BigInteger operator / (int num) const;
 
 	bool operator == (const BigInteger &num) const;
 	bool operator != (const BigInteger &num) const;

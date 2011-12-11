@@ -33,6 +33,8 @@ public:
 	Editor(QWidget *parent = 0);
 	virtual ~Editor();
 
+	void setViewPoint(const BigInteger &x, const BigInteger &y);
+
 public slots:
 	void rectChanged();
 	void scrollChanged(int);
@@ -42,15 +44,19 @@ protected:
 	void resizeEvent(QResizeEvent *);
 
 private:
+	void resetViewPoint();
+	void viewResized();
+	void scaleView(int scale, int anchor_x, int anchor_y);
+	void scrollView(Qt::Orientation orientation);
 	bool eventFilter(QObject *obj, QEvent *event);
 
 	QWidget *m_canvas;
 	QScrollBar *m_vertScroll, *m_horiScroll;
 
-	BigInteger m_rect_x1, m_rect_y1, m_rect_x2, m_rect_y2;
+	BigInteger m_rect_x1, m_rect_y1, m_rect_x2, m_rect_y2, m_rect_w, m_rect_h;
 	BigInteger m_view_x, m_view_y;
+	int m_vertEdgeSpacing, m_horiEdgeSpacing;
 	int m_scale, m_scalePixel, m_vertGridCount, m_horiGridCount;
-	BigInteger m_scrollStep;
 };
 
 #endif

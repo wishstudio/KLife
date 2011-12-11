@@ -30,13 +30,13 @@ class AbstractAlgorithm: public QThread
 
 public:
 	virtual QString name() = 0;
-	virtual int grid(int x, int y) = 0;
+	virtual int grid(const BigInteger &x, const BigInteger &y) = 0;
 	virtual void setGrid(const BigInteger &x, const BigInteger &y, int state) = 0;
 	virtual void clearGrid() = 0;
 	virtual bool isVerticalInfinity() = 0;
 	virtual bool isHorizontalInfinity() = 0;
 	virtual bool isInfinity(Qt::Orientation orientation) { return orientation == Qt::Vertical? isVerticalInfinity(): isHorizontalInfinity(); }
-	virtual void getRect(int *x, int *y, int *w, int *h) = 0;
+	virtual void getRect(BigInteger *x, BigInteger *y, BigInteger *w, BigInteger *h) = 0;
 	virtual void setRect(const BigInteger &x, const BigInteger &y, const BigInteger &w, const BigInteger &h) = 0;
 	virtual void paint(CanvasPainter *painter, const BigInteger &x, const BigInteger &y, int w, int h) = 0;
 	virtual void runStep() = 0;

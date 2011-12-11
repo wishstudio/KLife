@@ -137,6 +137,19 @@ BigInteger BigInteger::operator * (int num) const
 	return ret;
 }
 
+BigInteger BigInteger::operator / (int num) const
+{
+	BigInteger ret;
+	if (num > 0)
+		mpz_div_ui(ret.data, data, (unsigned long int) num);
+	else
+	{
+		mpz_div_ui(ret.data, data, (unsigned long int) -num);
+		mpz_neg(ret.data, ret.data);
+	}
+	return ret;
+}
+
 bool BigInteger::operator == (const BigInteger &num) const
 {
 	return mpz_cmp(data, num.data) == 0;

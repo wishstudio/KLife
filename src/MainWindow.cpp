@@ -31,7 +31,7 @@
 MainWindow::MainWindow(QWidget *parent)
 	: KXmlGuiWindow(parent)
 {
-	AlgorithmManager::algorithm()->setRect(0, 0, 300, 300);
+	AlgorithmManager::algorithm()->setRect(0, 0, 1000, 1000);
 	canvas = new Editor(this);
 	setCentralWidget(canvas);
 	setupActions();

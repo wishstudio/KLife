@@ -33,12 +33,12 @@ public:
 	NaiveLife();
 
 	virtual QString name() { return "NaiveLife"; }
-	virtual int grid(int x, int y);
+	virtual int grid(const BigInteger &x, const BigInteger &y);
 	virtual void setGrid(const BigInteger &x, const BigInteger &y, int state);
 	virtual void clearGrid();
 	virtual bool isVerticalInfinity() { return false; }
 	virtual bool isHorizontalInfinity() { return false; }
-	virtual void getRect(int *x, int *y, int *w, int *h);
+	virtual void getRect(BigInteger *x, BigInteger *y, BigInteger *w, BigInteger *h);
 	virtual void setRect(const BigInteger &x, const BigInteger &y, const BigInteger &w, const BigInteger &h);
 	virtual void paint(CanvasPainter *canvasPainter, const BigInteger &x, const BigInteger &y, int w, int h);
 	virtual void runStep();
@@ -51,7 +51,8 @@ private:
 	int *m_grid;
 
 	size_t m_gridSize;
-	BigInteger m_x, m_y, m_w, m_h;
+	BigInteger m_x, m_y;
+	int m_w, m_h;
 };
 
 #endif

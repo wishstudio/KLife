@@ -32,13 +32,12 @@ NaiveLife::NaiveLife()
 {
 }
 
-#define GRID(x, y) ((size_t) ((x) - m_x) * (size_t) m_h + (size_t) ((y) - m_y))
-int NaiveLife::grid(int x, int y)
+#define GRID(x, y) ((size_t) (x) * (size_t) m_h + (size_t) (y))
+int NaiveLife::grid(const BigInteger &x, const BigInteger &y)
 {
 	m_lock->lock();
-	if (x < m_x || (x - m_x >= m_w) || y < m_y || (y - m_y >= m_h))
-		qFatal("NaiveLife::setGrid(): out of range");
-	int ret = m_grid[GRID(x, y)];
+	int my_x = x - m_x, my_y = y - m_y;
+	int ret = m_grid[GRID(my_x, my_y)];
 	m_lock->unlock();
 	return ret;
 }
@@ -46,9 +45,8 @@ int NaiveLife::grid(int x, int y)
 void NaiveLife::setGrid(const BigInteger &x, const BigInteger &y, int state)
 {
 	m_lock->lock();
-	if (x < m_x || (x - m_x >= m_w) || y < m_y || (y - m_y >= m_h))
-		qFatal("NaiveLife::setGrid(): out of range");
-	m_grid[GRID(x, y)] = state;
+	int my_x = x - m_x, my_y = y - m_y;
+	m_grid[GRID(my_x, my_y)] = state;
 	m_lock->unlock();
 	emit gridChanged();
 }
@@ -59,7 +57,7 @@ void NaiveLife::clearGrid()
 	emit gridChanged();
 }
 
-void NaiveLife::getRect(int *x, int *y, int *w, int *h)
+void NaiveLife::getRect(BigInteger *x, BigInteger *y, BigInteger *w, BigInteger *h)
 {
 	*x = m_x;
 	*y = m_y;
