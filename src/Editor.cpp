@@ -148,18 +148,7 @@ void Editor::scrollChanged(int)
 			return;
 		scrollBar->setSliderPosition(0);
 	}
-	scrollView(scrollBar->orientation());
-	emit update();
-}
-
-void Editor::scrollReleased()
-{
-	scrollChanged(qobject_cast<QScrollBar *>(sender())->sliderPosition());
-}
-
-void Editor::scrollView(Qt::Orientation orientation)
-{
-	if (orientation == Qt::Vertical)
+	if (scrollBar->orientation() == Qt::Vertical)
 	{
 		if (!AlgorithmManager::algorithm()->isVerticalInfinity())
 			m_view_y = m_rect_y1 + BigInteger(m_vertScroll->sliderPosition()) - m_vertEdgeSpacing;
@@ -169,6 +158,12 @@ void Editor::scrollView(Qt::Orientation orientation)
 		if (!AlgorithmManager::algorithm()->isHorizontalInfinity())
 			m_view_x = m_rect_x1 + BigInteger(m_horiScroll->sliderPosition()) - m_horiEdgeSpacing;
 	}
+	emit update();
+}
+
+void Editor::scrollReleased()
+{
+	scrollChanged(qobject_cast<QScrollBar *>(sender())->sliderPosition());
 }
 
 void Editor::setViewPoint(const BigInteger &x, const BigInteger &y)

@@ -47,7 +47,6 @@ private:
 	void resetViewPoint();
 	void viewResized();
 	void scaleView(int scale, int anchor_x, int anchor_y);
-	void scrollView(Qt::Orientation orientation);
 	bool eventFilter(QObject *obj, QEvent *event);
 
 	QWidget *m_canvas;
