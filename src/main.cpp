@@ -35,7 +35,7 @@ int main(int argc, char **argv)
 		ki18n("(c) 2011 Xiangyan Sun"),
 		ki18n(""),
 		"",
-		"");
+		"wishstudio@gmail.com");
 	aboutData.addAuthor(ki18n("Xiangyan Sun"), ki18n("Project founder, main developer"), "wishstudio@gmail.com", "", "");
 	KCmdLineArgs::init(argc, argv, &aboutData);
 
