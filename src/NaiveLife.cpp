@@ -237,59 +237,42 @@ inline void NaiveLife::computeBlockNZFlag(Block *block)
 
 inline void NaiveLife::computeNodeFlag(Node *node, size_t depth)
 {
+	int ul_flag, ur_flag, dl_flag, dr_flag;
 	if (depth == BLOCK_DEPTH + 1)
 	{
-		Block *node_ul = reinterpret_cast<Block *>(node->ul);
-		Block *node_ur = reinterpret_cast<Block *>(node->ur);
-		Block *node_dl = reinterpret_cast<Block *>(node->dl);
-		Block *node_dr = reinterpret_cast<Block *>(node->dr);
-		node->flag = TEST_BIT(node_ul->flag, CHANGED) | TEST_BIT(node_ur->flag, CHANGED) | TEST_BIT(node_dl->flag, CHANGED) | TEST_BIT(node_dr->flag, CHANGED);
-
-		node->flag |= TEST_BIT(node_ul->flag, UP_CHANGED);
-		node->flag |= TEST_BIT(node_ul->flag, UP_NZ);
-		node->flag |= TEST_BIT(node_ul->flag, LEFT_CHANGED);
-		node->flag |= TEST_BIT(node_ul->flag, LEFT_NZ);
-
-		node->flag |= TEST_BIT(node_ur->flag, UP_CHANGED);
-		node->flag |= TEST_BIT(node_ur->flag, UP_NZ);
-		node->flag |= TEST_BIT(node_ur->flag, RIGHT_CHANGED);
-		node->flag |= TEST_BIT(node_ur->flag, RIGHT_NZ);
-
-		node->flag |= TEST_BIT(node_dl->flag, DOWN_CHANGED);
-		node->flag |= TEST_BIT(node_dl->flag, DOWN_NZ);
-		node->flag |= TEST_BIT(node_dl->flag, LEFT_CHANGED);
-		node->flag |= TEST_BIT(node_dl->flag, LEFT_NZ);
-
-		node->flag |= TEST_BIT(node_dr->flag, DOWN_CHANGED);
-		node->flag |= TEST_BIT(node_dr->flag, DOWN_NZ);
-		node->flag |= TEST_BIT(node_dr->flag, RIGHT_CHANGED);
-		node->flag |= TEST_BIT(node_dr->flag, RIGHT_NZ);
+		ul_flag = reinterpret_cast<Block *>(node->ul)->flag;
+		ur_flag = reinterpret_cast<Block *>(node->ur)->flag;
+		dl_flag = reinterpret_cast<Block *>(node->dl)->flag;
+		dr_flag = reinterpret_cast<Block *>(node->dr)->flag;
 	}
 	else
 	{
-		Node *node_ul = node->ul, *node_ur = node->ur, *node_dl = node->dl, *node_dr = node->dr;
-		node->flag = TEST_BIT(node_ul->flag, CHANGED) | TEST_BIT(node_ur->flag, CHANGED) | TEST_BIT(node_dl->flag, CHANGED) | TEST_BIT(node_dr->flag, CHANGED);
-
-		node->flag |= TEST_BIT(node_ul->flag, UP_CHANGED);
-		node->flag |= TEST_BIT(node_ul->flag, UP_NZ);
-		node->flag |= TEST_BIT(node_ul->flag, LEFT_CHANGED);
-		node->flag |= TEST_BIT(node_ul->flag, LEFT_NZ);
-
-		node->flag |= TEST_BIT(node_ur->flag, UP_CHANGED);
-		node->flag |= TEST_BIT(node_ur->flag, UP_NZ);
-		node->flag |= TEST_BIT(node_ur->flag, RIGHT_CHANGED);
-		node->flag |= TEST_BIT(node_ur->flag, RIGHT_NZ);
-
-		node->flag |= TEST_BIT(node_dl->flag, DOWN_CHANGED);
-		node->flag |= TEST_BIT(node_dl->flag, DOWN_NZ);
-		node->flag |= TEST_BIT(node_dl->flag, LEFT_CHANGED);
-		node->flag |= TEST_BIT(node_dl->flag, LEFT_NZ);
-
-		node->flag |= TEST_BIT(node_dr->flag, DOWN_CHANGED);
-		node->flag |= TEST_BIT(node_dr->flag, DOWN_NZ);
-		node->flag |= TEST_BIT(node_dr->flag, RIGHT_CHANGED);
-		node->flag |= TEST_BIT(node_dr->flag, RIGHT_NZ);
+		ul_flag = node->ul->flag;
+		ur_flag = node->ur->flag;
+		dl_flag = node->dl->flag;
+		dr_flag = node->dr->flag;
 	}
+	node->flag = TEST_BIT(ul_flag, CHANGED) | TEST_BIT(ur_flag, CHANGED) | TEST_BIT(dl_flag, CHANGED) | TEST_BIT(dr_flag, CHANGED);
+
+	node->flag |= TEST_BIT(ul_flag, UP_CHANGED);
+	node->flag |= TEST_BIT(ul_flag, UP_NZ);
+	node->flag |= TEST_BIT(ul_flag, LEFT_CHANGED);
+	node->flag |= TEST_BIT(ul_flag, LEFT_NZ);
+
+	node->flag |= TEST_BIT(ur_flag, UP_CHANGED);
+	node->flag |= TEST_BIT(ur_flag, UP_NZ);
+	node->flag |= TEST_BIT(ur_flag, RIGHT_CHANGED);
+	node->flag |= TEST_BIT(ur_flag, RIGHT_NZ);
+
+	node->flag |= TEST_BIT(dl_flag, DOWN_CHANGED);
+	node->flag |= TEST_BIT(dl_flag, DOWN_NZ);
+	node->flag |= TEST_BIT(dl_flag, LEFT_CHANGED);
+	node->flag |= TEST_BIT(dl_flag, LEFT_NZ);
+
+	node->flag |= TEST_BIT(dr_flag, DOWN_CHANGED);
+	node->flag |= TEST_BIT(dr_flag, DOWN_NZ);
+	node->flag |= TEST_BIT(dr_flag, RIGHT_CHANGED);
+	node->flag |= TEST_BIT(dr_flag, RIGHT_NZ);
 }
 
 Block *NaiveLife::newBlock()
