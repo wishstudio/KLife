@@ -88,7 +88,10 @@ int NaiveLife::grid(const BigInteger &x, const BigInteger &y)
 	BigInteger my_x = x - m_x, my_y = y - m_y;
 	// out of range
 	if (my_x.sgn() < 0 || my_x.bitCount() > m_depth || my_y.sgn() < 0 || my_y.bitCount() > m_depth)
+	{
+		m_readLock->unlock();
 		return 0;
+	}
 	Node *p = m_root;
 	size_t depth = m_depth;
 	while (depth > BLOCK_DEPTH)
@@ -361,9 +364,13 @@ void NaiveLife::paint(CanvasPainter *painter, const BigInteger &x, const BigInte
 	painter->fillGrid(0, 0, w, h, 0);
 
 	// Fit into range
-	BigInteger x1 = x - m_x, y1 = y - m_y, x2 = x1 + (w - 1), y2 = y1 + (w - 1);
-	if (x2.sgn() < 0 || x1.bitCount() > m_depth || y2.sgn() < 0 || y1.bitCount() > m_depth)
+	BigInteger x1 = x - m_x, y1 = y - m_y, x2 = x1 + (w - 1), y2 = y1 + (h - 1);
+
+	if (x2.sgn() < 0 || (x1.sgn() > 0 && x1.bitCount() > m_depth) || y2.sgn() < 0 || (y1.sgn() > 0 && y1.bitCount() > m_depth))
+	{
+		m_readLock->unlock();
 		return;
+	}
 
 	// The coordinate of the upper left grid in canvas painter
 	int offset_x = 0, offset_y = 0;
