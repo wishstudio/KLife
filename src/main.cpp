@@ -31,7 +31,7 @@ int main(int argc, char **argv)
 		ki18n("KLife"),
 		"0.1",
 		ki18n("A simulator and analyzer for Conway's Game of Life and other cellular automations."),
-		KAboutData::License_GPL,
+		KAboutData::License_GPL_V3,
 		ki18n("(c) 2011 Xiangyan Sun"),
 		ki18n(""),
 		"",
