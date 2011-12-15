@@ -206,7 +206,7 @@ void NaiveLife::expand()
 	computeNodeFlag(m_root->ur, m_depth);
 	computeNodeFlag(m_root->dl, m_depth);
 	computeNodeFlag(m_root->dr, m_depth);
-	computeNodeFlag(m_root, m_depth);
+	computeNodeFlag(m_root, m_depth + 1);
 	BigInteger offset = BigInteger::exp2(m_depth - 1);
 	m_x -= offset;
 	m_y -= offset;
@@ -241,18 +241,22 @@ inline void NaiveLife::computeNodeFlag(Node *node, size_t depth)
 		Block *node_dl = reinterpret_cast<Block *>(node->dl);
 		Block *node_dr = reinterpret_cast<Block *>(node->dr);
 		node->flag = TEST_BIT(node_ul->flag, CHANGED) | TEST_BIT(node_ur->flag, CHANGED) | TEST_BIT(node_dl->flag, CHANGED) | TEST_BIT(node_dr->flag, CHANGED);
+
 		node->flag |= TEST_BIT(node_ul->flag, UP_CHANGED);
 		node->flag |= TEST_BIT(node_ul->flag, UP_NZ);
 		node->flag |= TEST_BIT(node_ul->flag, LEFT_CHANGED);
 		node->flag |= TEST_BIT(node_ul->flag, LEFT_NZ);
-		node->flag |= TEST_BIT(node_ul->flag, UP_CHANGED);
+
+		node->flag |= TEST_BIT(node_ur->flag, UP_CHANGED);
 		node->flag |= TEST_BIT(node_ur->flag, UP_NZ);
 		node->flag |= TEST_BIT(node_ur->flag, RIGHT_CHANGED);
 		node->flag |= TEST_BIT(node_ur->flag, RIGHT_NZ);
+
 		node->flag |= TEST_BIT(node_dl->flag, DOWN_CHANGED);
 		node->flag |= TEST_BIT(node_dl->flag, DOWN_NZ);
 		node->flag |= TEST_BIT(node_dl->flag, LEFT_CHANGED);
 		node->flag |= TEST_BIT(node_dl->flag, LEFT_NZ);
+
 		node->flag |= TEST_BIT(node_dr->flag, DOWN_CHANGED);
 		node->flag |= TEST_BIT(node_dr->flag, DOWN_NZ);
 		node->flag |= TEST_BIT(node_dr->flag, RIGHT_CHANGED);
@@ -262,18 +266,22 @@ inline void NaiveLife::computeNodeFlag(Node *node, size_t depth)
 	{
 		Node *node_ul = node->ul, *node_ur = node->ur, *node_dl = node->dl, *node_dr = node->dr;
 		node->flag = TEST_BIT(node_ul->flag, CHANGED) | TEST_BIT(node_ur->flag, CHANGED) | TEST_BIT(node_dl->flag, CHANGED) | TEST_BIT(node_dr->flag, CHANGED);
+
 		node->flag |= TEST_BIT(node_ul->flag, UP_CHANGED);
 		node->flag |= TEST_BIT(node_ul->flag, UP_NZ);
 		node->flag |= TEST_BIT(node_ul->flag, LEFT_CHANGED);
 		node->flag |= TEST_BIT(node_ul->flag, LEFT_NZ);
-		node->flag |= TEST_BIT(node_ul->flag, UP_CHANGED);
+
+		node->flag |= TEST_BIT(node_ur->flag, UP_CHANGED);
 		node->flag |= TEST_BIT(node_ur->flag, UP_NZ);
 		node->flag |= TEST_BIT(node_ur->flag, RIGHT_CHANGED);
 		node->flag |= TEST_BIT(node_ur->flag, RIGHT_NZ);
+
 		node->flag |= TEST_BIT(node_dl->flag, DOWN_CHANGED);
 		node->flag |= TEST_BIT(node_dl->flag, DOWN_NZ);
 		node->flag |= TEST_BIT(node_dl->flag, LEFT_CHANGED);
 		node->flag |= TEST_BIT(node_dl->flag, LEFT_NZ);
+
 		node->flag |= TEST_BIT(node_dr->flag, DOWN_CHANGED);
 		node->flag |= TEST_BIT(node_dr->flag, DOWN_NZ);
 		node->flag |= TEST_BIT(node_dr->flag, RIGHT_CHANGED);
@@ -317,26 +325,12 @@ void NaiveLife::deleteNode(Node *node, size_t depth)
 	{
 		Block *bnode = reinterpret_cast<Block *>(node);
 		if (TEST_BIT(bnode->flag, KEEP))
-		{
 			CLR_BIT(bnode->flag, KEEP);
-			CLR_BIT(bnode->flag, CHANGED);
-			CLR_BIT(bnode->flag, UP_CHANGED);
-			CLR_BIT(bnode->flag, DOWN_CHANGED);
-			CLR_BIT(bnode->flag, LEFT_CHANGED);
-			CLR_BIT(bnode->flag, RIGHT_CHANGED);
-		}
 		else
 			deleteObject(bnode);
 	}
 	else if (TEST_BIT(node->flag, KEEP))
-	{
 		CLR_BIT(node->flag, KEEP);
-		CLR_BIT(node->flag, CHANGED);
-		CLR_BIT(node->flag, UP_CHANGED);
-		CLR_BIT(node->flag, DOWN_CHANGED);
-		CLR_BIT(node->flag, LEFT_CHANGED);
-		CLR_BIT(node->flag, RIGHT_CHANGED);
-	}
 	else
 	{
 		deleteNode(node->ul, depth - 1);
@@ -481,7 +475,6 @@ void NaiveLife::drawNode(CanvasPainter *painter, Node *node, int x1, int y1, int
 void NaiveLife::runStep()
 {
 	start();
-	emit gridChanged();
 }
 
 void NaiveLife::runNode(Node *&p, Node *node, Node *up, Node *down, Node *left, Node *right, Node *upleft, Node *upright, Node *downleft, Node *downright, size_t depth)
@@ -611,4 +604,5 @@ void NaiveLife::run()
 	m_readLock->unlock();
 	m_writeLock->unlock();
 	m_running = false;
+	emit gridChanged();
 }
