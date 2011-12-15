@@ -55,6 +55,12 @@ CanvasPainter::~CanvasPainter()
 
 void CanvasPainter::drawGrid(int x, int y, int state)
 {
-	QColor fillColor = state? Qt::white: QColor(0x30, 0x30, 0x30);
-	fillRect((m_x + x) * m_scalePixel, (m_y + y) * m_scalePixel, m_scalePixel, m_scalePixel, fillColor);
+	QColor gridColor = state? Qt::white: QColor(0x30, 0x30, 0x30);
+	fillRect((m_x + x) * m_scalePixel, (m_y + y) * m_scalePixel, m_scalePixel, m_scalePixel, gridColor);
+}
+
+void CanvasPainter::fillGrid(int x, int y, int w, int h, int state)
+{
+	QColor gridColor = state? Qt::white: QColor(0x30, 0x30, 0x30);
+	fillRect((m_x + x) * m_scalePixel, (m_y + y) * m_scalePixel, m_scalePixel * w, m_scalePixel * h, gridColor);
 }

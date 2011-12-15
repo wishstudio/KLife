@@ -20,8 +20,11 @@
 #ifndef BIGINTEGER_H
 #define BIGINTEGER_H
 
+#include <QDebug>
+
 #include <gmp.h>
 
+class QDebug;
 class QString;
 class BigInteger
 {
@@ -37,6 +40,13 @@ public:
 	operator int() const;
 	operator QString() const;
 
+	static BigInteger exp2(int exp);
+	int sgn() const;
+	size_t bitCount() const;
+	int bit(size_t id) const;
+	void setBit(size_t id);
+	int lowbits(size_t count) const;
+
 	BigInteger operator + (const BigInteger &num) const;
 	BigInteger operator + (int num) const;
 	BigInteger& operator += (const BigInteger &num);
@@ -51,11 +61,25 @@ public:
 	BigInteger operator / (int num) const;
 
 	bool operator == (const BigInteger &num) const;
+	bool operator == (int num) const;
 	bool operator != (const BigInteger &num) const;
+	bool operator != (int num) const;
 	bool operator < (const BigInteger &num) const;
+	bool operator < (int num) const;
 	bool operator <= (const BigInteger &num) const;
+	bool operator <= (int num) const;
 	bool operator > (const BigInteger &num) const;
+	bool operator > (int num) const;
 	bool operator >= (const BigInteger &num) const;
+	bool operator >= (int num) const;
+
+	friend QDebug operator << (QDebug dbg, const BigInteger &num)
+	{
+		char *str = mpz_get_str(NULL, 10, num.data);
+		dbg.nospace() << str;
+		delete str;
+		return dbg.space();
+	}
 
 private:
 	mpz_t data;

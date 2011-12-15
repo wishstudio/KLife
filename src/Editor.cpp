@@ -39,7 +39,9 @@ static const int scalePixelCnt = 4;
 static const int scalePixel[5] = {1, 2, 4, 8, 16};
 
 Editor::Editor(QWidget *parent)
-	: QWidget(parent), m_rect_x1(0), m_rect_y1(0), m_rect_x2(0), m_rect_y2(0), m_view_x(0), m_view_y(0), m_scale(-scalePixelCnt), m_scalePixel(scalePixel[scalePixelCnt])
+	: QWidget(parent), m_rect_x1(0), m_rect_y1(0), m_rect_x2(0), m_rect_y2(0), m_view_x(0), m_view_y(0),
+	  m_scroll_last_x(0), m_scroll_last_y(0),
+	  m_scale(-scalePixelCnt), m_scalePixel(scalePixel[scalePixelCnt])
 {
 	QToolBar *toolbar = new QToolBar();
 	KAction *stepAction = new KAction(this);
@@ -52,7 +54,7 @@ Editor::Editor(QWidget *parent)
 	toolbar->addAction(stepAction);
 
 	m_canvas = new QWidget();
-	m_canvas->setMouseTracking(false);
+	m_canvas->setMouseTracking(true);
 	m_canvas->installEventFilter(this);
 
 	m_vertScroll = new QScrollBar(Qt::Vertical);
@@ -105,7 +107,6 @@ void Editor::viewResized()
 		m_vertScroll->setMinimum(-100);
 		m_vertScroll->setMaximum(100);
 		m_vertScroll->setSliderPosition(0);
-		m_vertScroll->setPageStep(42);
 	}
 	else
 	{
@@ -121,7 +122,6 @@ void Editor::viewResized()
 		m_horiScroll->setMinimum(-100);
 		m_horiScroll->setMaximum(100);
 		m_horiScroll->setSliderPosition(0);
-		m_horiScroll->setPageStep(42);
 	}
 	else
 	{
@@ -142,11 +142,37 @@ void Editor::resizeEvent(QResizeEvent *)
 void Editor::scrollChanged(int)
 {
 	QScrollBar *scrollBar = qobject_cast<QScrollBar *>(sender());
-	if (!scrollBar->isSliderDown() && AlgorithmManager::algorithm()->isInfinity(scrollBar->orientation()))
+	if (AlgorithmManager::algorithm()->isInfinity(scrollBar->orientation()))
 	{
-		if (scrollBar->sliderPosition() == 0)
-			return;
-		scrollBar->setSliderPosition(0);
+		if (!scrollBar->isSliderDown())
+		{
+			if (scrollBar->orientation() == Qt::Vertical)
+				if (m_scroll_last_y)
+					m_scroll_last_y = 0;
+				else
+					m_view_y += scrollBar->sliderPosition();
+			else
+				if (m_scroll_last_x)
+					m_scroll_last_x = 0;
+				else
+					m_view_x += scrollBar->sliderPosition();
+			scrollBar->setSliderPosition(0);
+		}
+		else
+		{
+			if (scrollBar->orientation() == Qt::Vertical)
+			{
+				m_view_y -= m_scroll_last_y - scrollBar->sliderPosition();
+				m_scroll_last_y = scrollBar->sliderPosition();
+			}
+			else
+			{
+				m_view_x -= m_scroll_last_x - scrollBar->sliderPosition();
+				m_scroll_last_x = scrollBar->sliderPosition();
+			}
+		}
+		emit update();
+		return;
 	}
 	if (scrollBar->orientation() == Qt::Vertical)
 	{
@@ -233,13 +259,17 @@ bool Editor::eventFilter(QObject *obj, QEvent *event)
 		{
 			QMouseEvent *e = static_cast<QMouseEvent *>(event);
 			BigInteger x = m_view_x + e->x() / m_scalePixel, y = m_view_y + e->y() / m_scalePixel;
-			bool inRange = true;
-			if (!AlgorithmManager::algorithm()->isVerticalInfinity())
-				inRange &= m_rect_x1 <= x && x <= m_rect_x2;
-			if (!AlgorithmManager::algorithm()->isHorizontalInfinity())
-				inRange &= m_rect_y1 <= y && y <= m_rect_y2;
-			if (inRange)
-				AlgorithmManager::algorithm()->setGrid(x, y, 1);
+			if (e->buttons() & Qt::LeftButton)
+			{
+				bool inRange = true;
+				if (!AlgorithmManager::algorithm()->isVerticalInfinity())
+					inRange &= m_rect_x1 <= x && x <= m_rect_x2;
+				if (!AlgorithmManager::algorithm()->isHorizontalInfinity())
+					inRange &= m_rect_y1 <= y && y <= m_rect_y2;
+				if (inRange)
+					AlgorithmManager::algorithm()->setGrid(x, y, 1);
+			}
+			emit coordinateChanged(x, y);
 			break;
 		}
 
@@ -248,7 +278,6 @@ bool Editor::eventFilter(QObject *obj, QEvent *event)
 			QWheelEvent *e = static_cast<QWheelEvent *>(event);
 			if (e->modifiers() & Qt::ControlModifier) // Scale view
 			{
-				BigInteger old_scalePixel = m_scalePixel;
 				scaleView(qMax(-scalePixelCnt, m_scale - e->delta() / 120), e->x() / m_scalePixel, e->y() / m_scalePixel);
 				emit update();
 			}
@@ -259,6 +288,7 @@ bool Editor::eventFilter(QObject *obj, QEvent *event)
 				else
 					QApplication::sendEvent(m_horiScroll, e);
 			}
+			emit coordinateChanged(m_view_x + e->x() / m_scalePixel, m_view_y + e->y() / m_scalePixel);
 			break;
 		}
 

@@ -18,3 +18,49 @@
  */
 
 #include "AbstractAlgorithm.h"
+
+void AbstractAlgorithm::getRect(BigInteger *x, BigInteger *y, BigInteger *w, BigInteger *h)
+{
+	*x = m_x;
+	*y = m_y;
+	*w = m_w;
+	*h = m_h;
+}
+
+void AbstractAlgorithm::setRect(const BigInteger &x, const BigInteger &y, const BigInteger &w, const BigInteger &h)
+{
+	m_x = x;
+	m_y = y;
+	m_w = w;
+	m_h = h;
+	rectChange(x, y, w, h);
+}
+
+void AbstractAlgorithm::setVerticalInfinity(bool infinity)
+{
+	m_vertInfinity = infinity;
+}
+
+void AbstractAlgorithm::setHorizontalInfinity(bool infinity)
+{
+	m_horiInfinity = infinity;
+}
+
+bool AbstractAlgorithm::isInfinity(Qt::Orientation orientation)
+{
+	if (orientation == Qt::Vertical)
+		return isVerticalInfinity();
+	return isHorizontalInfinity();
+}
+
+void AbstractAlgorithm::setInfinity(bool vertInfinity, bool horiInfinity)
+{
+	setVerticalInfinity(vertInfinity);
+	setHorizontalInfinity(horiInfinity);
+	infinityChange();
+}
+
+void AbstractAlgorithm::setAcceptInfinity(bool acceptInfinity)
+{
+	m_acceptInfinity = acceptInfinity;
+}

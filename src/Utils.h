@@ -17,30 +17,14 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-#ifndef MAINWINDOW_H
-#define MAINWINDOW_H
+#ifndef UTILS_H
+#define UTILS_H
 
-#include <KXmlGuiWindow>
+#define BIT(b) (1 << (b))
+#define TEST_BIT(x, b) ((x) & BIT(b))
+#define SET_BIT(x, b) ((x) = (x) | BIT(b))
+#define CLR_BIT(x, b) ((x) = (x) & ~BIT(b))
 
-class QLabel;
-class BigInteger;
-class Editor;
-class MainWindow: public KXmlGuiWindow
-{
-	Q_OBJECT
-
-public:
-	MainWindow(QWidget *parent = 0);
-	virtual ~MainWindow();
-
-public slots:
-	void coordinateChanged(const BigInteger &x, const BigInteger &y);
-
-private:
-	void setupActions();
-
-	QLabel *m_coordinate;
-	Editor *m_editor;
-};
+extern int bitlen(int num);
 
 #endif

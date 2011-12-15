@@ -17,11 +17,14 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+#include <QLabel>
+
 #include <KApplication>
 #include <KAction>
 #include <KActionCollection>
 #include <KLocale>
 #include <KStandardAction>
+#include <KStatusBar>
 
 #include "AbstractAlgorithm.h"
 #include "AlgorithmManager.h"
@@ -31,15 +34,24 @@
 MainWindow::MainWindow(QWidget *parent)
 	: KXmlGuiWindow(parent)
 {
-	AlgorithmManager::algorithm()->setRect(0, 0, 1000, 1000);
-	canvas = new Editor(this);
-	setCentralWidget(canvas);
+	AlgorithmManager::algorithm()->setInfinity(true, true);
+	m_editor = new Editor(this);
+	connect(m_editor, SIGNAL(coordinateChanged(const BigInteger &, const BigInteger &)), this, SLOT(coordinateChanged(const BigInteger &, const BigInteger &)));
+	setCentralWidget(m_editor);
 	setupActions();
+	statusBar()->setSizeGripEnabled(true);
+	m_coordinate = new QLabel();
+	statusBar()->addWidget(m_coordinate);
 }
 
 MainWindow::~MainWindow()
 {
-	delete canvas;
+	delete m_editor;
+}
+
+void MainWindow::coordinateChanged(const BigInteger &x, const BigInteger &y)
+{
+	m_coordinate->setText("(" + static_cast<QString>(x) + ", " + static_cast<QString>(y) + ")");
 }
 
 void MainWindow::setupActions()

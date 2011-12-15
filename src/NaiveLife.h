@@ -20,39 +20,52 @@
 #ifndef NAIVELIFE_H
 #define NAIVELIFE_H
 
+#include <QVector>
+
 #include "AbstractAlgorithm.h"
 #include "BigInteger.h"
+#include "MemoryManager.h"
 
+struct Block;
+struct Node;
 class QMutex;
 class CanvasPainter;
-class NaiveLife: public AbstractAlgorithm
+class NaiveLife: public AbstractAlgorithm, private MemoryManager
 {
 	Q_OBJECT
 
 public:
 	NaiveLife();
+	virtual ~NaiveLife();
 
 	virtual QString name() { return "NaiveLife"; }
 	virtual int grid(const BigInteger &x, const BigInteger &y);
 	virtual void setGrid(const BigInteger &x, const BigInteger &y, int state);
 	virtual void clearGrid();
-	virtual bool isVerticalInfinity() { return false; }
-	virtual bool isHorizontalInfinity() { return false; }
-	virtual void getRect(BigInteger *x, BigInteger *y, BigInteger *w, BigInteger *h);
-	virtual void setRect(const BigInteger &x, const BigInteger &y, const BigInteger &w, const BigInteger &h);
+	virtual void rectChange(const BigInteger &x, const BigInteger &y, const BigInteger &, const BigInteger &);
 	virtual void paint(CanvasPainter *canvasPainter, const BigInteger &x, const BigInteger &y, int w, int h);
 	virtual void runStep();
 
 private:
+	void expand();
+	inline void computeBlockNZFlag(Block *block);
+	inline void computeNodeFlag(Node *node, size_t depth);
+	Block *newBlock();
+	Node *newNode(size_t depth);
+	Node *emptyNode(size_t depth);
+	void deleteNode(Node *node, size_t depth);
+	inline void drawNode(CanvasPainter *painter, Node *node_ul, Node *node_ur, Node *node_dl, Node *node_dr, int x1, int y1, int x2, int y2, size_t depth, int offset_x, int offset_y);
+	void drawNode(CanvasPainter *painter, Node *node, int x1, int y1, int x2, int y2, size_t depth, int offset_x, int offset_y);
+	void runNode(Node *&p, Node *node, Node *up, Node *down, Node *left, Node *right, Node *upleft, Node *upright, Node *downleft, Node *downright, size_t depth);
 	virtual void run();
 
-	QMutex *m_lock;
+	volatile bool m_running;
+	QVector<Node *> m_emptyNode;
+	size_t m_depth;
+	Node *m_root;
+	QMutex *m_readLock, *m_writeLock;
 
-	int *m_grid;
-
-	size_t m_gridSize;
 	BigInteger m_x, m_y;
-	int m_w, m_h;
 };
 
 #endif

@@ -30,6 +30,7 @@ public:
 	virtual ~CanvasPainter();
 
 	void drawGrid(int x, int y, int state);
+	void fillGrid(int x, int y, int w, int h, int state);
 
 private:
 	int m_scalePixel, m_x, m_y;

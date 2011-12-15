@@ -40,6 +40,9 @@ public slots:
 	void scrollChanged(int);
 	void scrollReleased();
 
+signals:
+	void coordinateChanged(const BigInteger &x, const BigInteger &y);
+
 protected:
 	void resizeEvent(QResizeEvent *);
 
@@ -54,6 +57,7 @@ private:
 
 	BigInteger m_rect_x1, m_rect_y1, m_rect_x2, m_rect_y2, m_rect_w, m_rect_h;
 	BigInteger m_view_x, m_view_y;
+	int m_scroll_last_x, m_scroll_last_y;
 	int m_vertEdgeSpacing, m_horiEdgeSpacing;
 	int m_scale, m_scalePixel, m_vertGridCount, m_horiGridCount;
 };

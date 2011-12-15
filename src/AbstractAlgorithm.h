@@ -22,7 +22,8 @@
 
 #include <QThread>
 
-class BigInteger;
+#include "BigInteger.h"
+
 class CanvasPainter;
 class AbstractAlgorithm: public QThread
 {
@@ -33,17 +34,32 @@ public:
 	virtual int grid(const BigInteger &x, const BigInteger &y) = 0;
 	virtual void setGrid(const BigInteger &x, const BigInteger &y, int state) = 0;
 	virtual void clearGrid() = 0;
-	virtual bool isVerticalInfinity() = 0;
-	virtual bool isHorizontalInfinity() = 0;
-	virtual bool isInfinity(Qt::Orientation orientation) { return orientation == Qt::Vertical? isVerticalInfinity(): isHorizontalInfinity(); }
-	virtual void getRect(BigInteger *x, BigInteger *y, BigInteger *w, BigInteger *h) = 0;
-	virtual void setRect(const BigInteger &x, const BigInteger &y, const BigInteger &w, const BigInteger &h) = 0;
+	virtual void getRect(BigInteger *x, BigInteger *y, BigInteger *w, BigInteger *h);
+	virtual void setRect(const BigInteger &x, const BigInteger &y, const BigInteger &w, const BigInteger &h);
 	virtual void paint(CanvasPainter *painter, const BigInteger &x, const BigInteger &y, int w, int h) = 0;
 	virtual void runStep() = 0;
+
+	virtual bool acceptInfinity() { return m_acceptInfinity; }
+	virtual bool isVerticalInfinity() { return m_vertInfinity; }
+	virtual void setVerticalInfinity(bool infinity);
+	virtual bool isHorizontalInfinity() { return m_horiInfinity; }
+	virtual void setHorizontalInfinity(bool infinity);
+	virtual bool isInfinity(Qt::Orientation orientation);
+	virtual void setInfinity(bool vertInfinity, bool horiInfinity);
 
 signals:
 	void rectChanged();
 	void gridChanged();
+
+protected:
+	virtual void rectChange(const BigInteger &x, const BigInteger &y, const BigInteger &w, const BigInteger &h) = 0;
+	virtual void infinityChange() {}
+	virtual void setAcceptInfinity(bool acceptInfinity);
+
+private:
+	BigInteger m_x, m_y, m_w, m_h;
+	bool m_acceptInfinity;
+	bool m_vertInfinity, m_horiInfinity;
 };
 
 #endif

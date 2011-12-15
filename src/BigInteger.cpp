@@ -61,9 +61,41 @@ BigInteger::operator int() const
 BigInteger::operator QString() const
 {
 	char *num = mpz_get_str(NULL, 10, data);
-	QLatin1String ret(num);
+	QString ret(num);
 	delete num;
 	return ret;
+}
+
+BigInteger BigInteger::exp2(int exp)
+{
+	BigInteger ret;
+	ret.setBit(exp);
+	return ret;
+}
+
+int BigInteger::sgn() const
+{
+	return mpz_sgn(data);
+}
+
+size_t BigInteger::bitCount() const
+{
+	return mpz_sizeinbase(data, 2);
+}
+
+int BigInteger::bit(size_t id) const
+{
+	return mpz_tstbit(data, (mp_bitcnt_t) id);
+}
+
+void BigInteger::setBit(size_t id)
+{
+	mpz_setbit(data, (mp_bitcnt_t) id);
+}
+
+int BigInteger::lowbits(size_t count) const
+{
+	return mpz_getlimbn(data, 0) & ((1 << count) - 1);
 }
 
 BigInteger BigInteger::operator + (const BigInteger &num) const
@@ -155,9 +187,19 @@ bool BigInteger::operator == (const BigInteger &num) const
 	return mpz_cmp(data, num.data) == 0;
 }
 
+bool BigInteger::operator == (int num) const
+{
+	return mpz_cmp_si(data, num) == 0;
+}
+
 bool BigInteger::operator != (const BigInteger &num) const
 {
 	return mpz_cmp(data, num.data) != 0;
+}
+
+bool BigInteger::operator != (int num) const
+{
+	return mpz_cmp_si(data, num) != 0;
 }
 
 bool BigInteger::operator < (const BigInteger &num) const
@@ -165,9 +207,19 @@ bool BigInteger::operator < (const BigInteger &num) const
 	return mpz_cmp(data, num.data) < 0;
 }
 
+bool BigInteger::operator < (int num) const
+{
+	return mpz_cmp_si(data, num) < 0;
+}
+
 bool BigInteger::operator <= (const BigInteger &num) const
 {
 	return mpz_cmp(data, num.data) <= 0;
+}
+
+bool BigInteger::operator <= (int num) const
+{
+	return mpz_cmp_si(data, num) <= 0;
 }
 
 bool BigInteger::operator > (const BigInteger &num) const
@@ -175,7 +227,17 @@ bool BigInteger::operator > (const BigInteger &num) const
 	return mpz_cmp(data, num.data) > 0;
 }
 
+bool BigInteger::operator > (int num) const
+{
+	return mpz_cmp_si(data, num) > 0;
+}
+
 bool BigInteger::operator >= (const BigInteger &num) const
 {
 	return mpz_cmp(data, num.data) >= 0;
+}
+
+bool BigInteger::operator >= (int num) const
+{
+	return mpz_cmp_si(data, num) >= 0;
 }
