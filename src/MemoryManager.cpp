@@ -16,8 +16,9 @@
  *   Free Software Foundation, Inc.,
  *   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-/*
+
 #include <cstdlib>
+#include <cstring>
 
 #include "MemoryManager.h"
 
@@ -31,61 +32,25 @@ MemoryManager::~MemoryManager()
 {
 	while (head)
 	{
-		MemoryPool *next = head->next;
+		MemoryChunk *next = head->next;
 		delete head;
 		head = next;
 	}
 }
 
-MemoryPool *MemoryManager::newPool()
+MemoryChunk *MemoryManager::newChunk()
 {
 	if (head)
 	{
-		MemoryPool *ret = head;
+		MemoryChunk *ret = head;
 		head = head->next;
 		return ret;
 	}
-	return (MemoryPool *) malloc(sizeof(MemoryPool));
+	return static_cast<MemoryChunk *>(malloc(CHUNK_SIZE));
 }
 
-void MemoryManager::deletePool(MemoryPool *pool)
+void MemoryManager::deleteChunk(MemoryChunk *chunk)
 {
-	pool->next = head;
-	head = pool;
+	chunk->next = head;
+	head = chunk;
 }
-
-template <typename T>
-T *MemoryManager::newObject()
-{
-	size_t size = sizeof(T);
-	if (heads[size])
-	{
-		T *ret = heads[size];
-		heads[size] = heads[size]->next;
-		return ret;
-	}
-	MemoryChunk *p = newPool(), *ret = ((char *) p) + POOL_SIZE - POOL_SIZE % size - size;
-	if (p == ret)
-		return p;
-	p->next = NULL;
-	for (;;)
-	{
-		MemoryChunk *q = ((char *) p) + size;
-		if (q == ret)
-		{
-			heads[size] = p;
-			return ret;
-		}
-		q->next = p;
-		p = q;
-	}
-}
-
-template <typename T>
-void MemoryManager::deleteObject(T *object)
-{
-	size_t size = sizeof(T);
-	((MemoryChunk *) object)->next = heads[size];
-	heads[size] = object;
-}
-*/

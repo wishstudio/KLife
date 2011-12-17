@@ -32,21 +32,8 @@ struct MemoryChunk
 class MemoryManager
 {
 public:
-	MemoryManager()
-		: head(NULL)
-	{
-		memset(heads, 0, sizeof heads);
-	}
-
-	~MemoryManager()
-	{
-		while (head)
-		{
-			MemoryChunk *next = head->next;
-			delete head;
-			head = next;
-		}
-	}
+	MemoryManager();
+	~MemoryManager();
 
 	template <typename T>
 	T *newObject()
@@ -83,22 +70,8 @@ public:
 	}
 
 private:
-	MemoryChunk *newChunk()
-	{
-		if (head)
-		{
-			MemoryChunk *ret = head;
-			head = head->next;
-			return ret;
-		}
-		return static_cast<MemoryChunk *>(malloc(CHUNK_SIZE));
-	}
-
-	void deleteChunk(MemoryChunk *chunk)
-	{
-		chunk->next = head;
-		head = chunk;
-	}
+	MemoryChunk *newChunk();
+	void deleteChunk(MemoryChunk *chunk);
 
 	MemoryChunk *head, *heads[CHUNK_SIZE];
 };
