@@ -3,6 +3,15 @@ project(KLife)
 find_package(KDE4 REQUIRED)
 find_package(GMP REQUIRED)
 
+macro_log_feature(GMP_FOUND "GMP" "The GNU Multiple Precision Arithmetic Library" "http://gmplib.org/" ${GMP_REQUIRED} "" "Required for building KCalc.")
+
+include(CheckTypeSize)
+
+check_type_size("signed long" SIZEOF_SIGNED_LONG)
+check_type_size("unsigned long" SIZEOF_UNSIGNED_LONG)
+
+configure_file(Config.h.cmake ${CMAKE_CURRENT_BINARY_DIR}/Config.h)
+
 include(KDE4Defaults)
 add_definitions(${QT_DEFINITIONS} ${KDE4_DEFINITIONS})
 

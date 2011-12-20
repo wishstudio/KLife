@@ -42,14 +42,16 @@ public:
 	virtual int grid(const BigInteger &x, const BigInteger &y);
 	virtual void setGrid(const BigInteger &x, const BigInteger &y, int state);
 	virtual void clearGrid();
+	virtual BigInteger generation() const;
+	virtual BigInteger population() const;
 	virtual void rectChange(const BigInteger &x, const BigInteger &y, const BigInteger &, const BigInteger &);
 	virtual void paint(CanvasPainter *canvasPainter, const BigInteger &x, const BigInteger &y, int w, int h);
 	virtual void runStep();
 
 private:
 	void expand();
-	inline void computeBlockNZFlag(Block *block);
-	inline void computeNodeFlag(Node *node, size_t depth);
+	inline void computeBlockActiveFlag(Block *block);
+	inline void computeNodeInfo(Node *node, size_t depth);
 	Block *newBlock();
 	Node *newNode(size_t depth);
 	Node *emptyNode(size_t depth);
@@ -66,6 +68,7 @@ private:
 	QMutex *m_readLock, *m_writeLock;
 
 	BigInteger m_x, m_y;
+	BigInteger m_generation;
 };
 
 #endif

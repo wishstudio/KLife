@@ -20,10 +20,48 @@
 #include <QString>
 
 #include "BigInteger.h"
+#include "Config.h"
 
-BigInteger::BigInteger(int num)
+BigInteger::BigInteger()
 {
-	mpz_init_set_si(data, (long int) num);
+	mpz_init(data);
+}
+
+// we believe sizeof(long int) >= sizeof(qint32)
+BigInteger::BigInteger(qint32 num)
+{
+	mpz_init_set_si(data, (signed long int) num);
+}
+
+BigInteger::BigInteger(quint32 num)
+{
+	mpz_init_set_ui(data, (unsigned long int) num);
+}
+
+BigInteger::BigInteger(qint64 num)
+{
+#if SIZEOF_SIGNED_LONG == 8
+	mpz_init_set_si(data, static_cast<signed long int>(num));
+#elif SIZEOF_SIGNED_LONG == 4
+	mpz_init_set_si(data, static_cast<signed long int>(num >> 32));
+	mpz_mul_2exp(data, data, 32);
+	mpz_add_ui(data, data, static_cast<signed long int>(num));
+#else
+#error "SIZEOF_SIGNED_LONG is a unhandled case"
+#endif
+}
+
+BigInteger::BigInteger(quint64 num)
+{
+#if SIZEOF_UNSIGNED_LONG == 8
+	mpz_init_set_ui(data, static_cast<unsigned long int>(num));
+#elif SIZEOF_UNSIGNED_LONG == 4
+	mpz_init_set_ui(data, static_cast<unsigned long int>(num >> 32));
+	mpz_mul_2exp(data, data, 32);
+	mpz_add_ui(data, data, static_cast<unsigned long int>(num));
+#else
+#error "SIZEOF_UNSIGNED_LONG is a unhandled case"
+#endif
 }
 
 BigInteger::BigInteger(const BigInteger &num)
@@ -41,9 +79,44 @@ BigInteger::~BigInteger()
 	mpz_clear(data);
 }
 
-BigInteger& BigInteger::operator = (int num)
+// Same as above
+BigInteger& BigInteger::operator = (qint32 num)
 {
-	mpz_set_si(data, (long int) num);
+	mpz_set_si(data, (signed long int) num);
+	return *this;
+}
+
+BigInteger& BigInteger::operator = (quint32 num)
+{
+	mpz_set_si(data, (unsigned long int) num);
+	return *this;
+}
+
+BigInteger& BigInteger::operator = (qint64 num)
+{
+#if SIZEOF_SIGNED_LONG == 8
+	mpz_set_si(data, static_cast<signed long int>(num));
+#elif SIZEOF_SIGNED_LONG == 4
+	mpz_set_si(data, static_cast<signed long int>(num >> 32));
+	mpz_mul_2exp(data, data, 32);
+	mpz_add_ui(data, data, static_cast<signed long int>(num));
+#else
+#error "SIZEOF_SIGNED_LONG is a unhandled case"
+#endif
+	return *this;
+}
+
+BigInteger& BigInteger::operator = (quint64 num)
+{
+#if SIZEOF_UNSIGNED_LONG == 8
+	mpz_set_ui(data, static_cast<unsigned long int>(num));
+#elif SIZEOF_UNSIGNED_LONG == 4
+	mpz_set_ui(data, static_cast<unsigned long int>(num >> 32));
+	mpz_mul_2exp(data, data, 32);
+	mpz_add_ui(data, data, static_cast<unsigned long int>(num));
+#else
+#error "SIZEOF_UNSIGNED_LONG is a unhandled case"
+#endif
 	return *this;
 }
 

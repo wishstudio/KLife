@@ -17,6 +17,7 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+#include <QFormLayout>
 #include <QLabel>
 
 #include <KApplication>
@@ -36,22 +37,57 @@ MainWindow::MainWindow(QWidget *parent)
 {
 	AlgorithmManager::algorithm()->setInfinity(true, true);
 	m_editor = new Editor(this);
-	connect(m_editor, SIGNAL(coordinateChanged(const BigInteger &, const BigInteger &)), this, SLOT(coordinateChanged(const BigInteger &, const BigInteger &)));
 	setCentralWidget(m_editor);
 	setupActions();
+	{
+		QWidget *form = new QWidget();
+		form->setStyleSheet("font-family: Monospace; font-size: 11px;");
+		form->setMinimumWidth(200);
+		QFormLayout *layout = new QFormLayout();
+		layout->setMargin(0);
+		layout->setSpacing(0);
+		m_generation = new QLabel();
+		m_generation->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
+		layout->addRow(new QLabel("Generation:"), m_generation);
+		m_population = new QLabel();
+		m_population->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
+		layout->addRow(new QLabel("Population:"), m_population);
+		form->setLayout(layout);
+		statusBar()->addWidget(form);
+	}
 	statusBar()->setSizeGripEnabled(true);
-	m_coordinate = new QLabel();
-	statusBar()->addWidget(m_coordinate);
-}
+	{
+		QWidget *form = new QWidget();
+		form->setStyleSheet("font-family: Monospace; font-size: 11px;");
+		form->setMinimumWidth(130);
+		QFormLayout *layout = new QFormLayout();
+		layout->setMargin(0);
+		layout->setSpacing(0);
+		m_coordinate_x = new QLabel();
+		m_coordinate_x->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
+		layout->addRow(new QLabel("X:"), m_coordinate_x);
+		m_coordinate_y = new QLabel();
+		m_coordinate_y->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
+		layout->addRow(new QLabel("Y:"), m_coordinate_y);
+		form->setLayout(layout);
+		statusBar()->addWidget(form);
+	}
 
-MainWindow::~MainWindow()
-{
-	delete m_editor;
+	gridChanged();
+	connect(AlgorithmManager::self(), SIGNAL(gridChanged()), this, SLOT(gridChanged()));
+	connect(m_editor, SIGNAL(coordinateChanged(const BigInteger &, const BigInteger &)), this, SLOT(coordinateChanged(const BigInteger &, const BigInteger &)));
 }
 
 void MainWindow::coordinateChanged(const BigInteger &x, const BigInteger &y)
 {
-	m_coordinate->setText("(" + static_cast<QString>(x) + ", " + static_cast<QString>(y) + ")");
+	m_coordinate_x->setText(x);
+	m_coordinate_y->setText(y);
+}
+
+void MainWindow::gridChanged()
+{
+	m_generation->setText(AlgorithmManager::algorithm()->generation());
+	m_population->setText(AlgorithmManager::algorithm()->population());
 }
 
 void MainWindow::setupActions()

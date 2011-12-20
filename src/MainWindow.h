@@ -31,15 +31,16 @@ class MainWindow: public KXmlGuiWindow
 
 public:
 	MainWindow(QWidget *parent = 0);
-	virtual ~MainWindow();
 
 public slots:
 	void coordinateChanged(const BigInteger &x, const BigInteger &y);
+	void gridChanged();
 
 private:
 	void setupActions();
 
-	QLabel *m_coordinate;
+	QLabel *m_coordinate_x, *m_coordinate_y;
+	QLabel *m_generation, *m_population;
 	Editor *m_editor;
 };
 

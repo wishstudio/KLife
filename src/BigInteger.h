@@ -29,12 +29,19 @@ class QString;
 class BigInteger
 {
 public:
-	BigInteger(int num = 0);
+	BigInteger();
+	BigInteger(qint32 num);
+	BigInteger(quint32 num);
+	BigInteger(qint64 num);
+	BigInteger(quint64 num);
 	BigInteger(const BigInteger &num);
 	BigInteger(const QString &num);
 	~BigInteger();
 
-	BigInteger& operator = (int num);
+	BigInteger& operator = (qint32 num);
+	BigInteger& operator = (quint32 num);
+	BigInteger& operator = (qint64 num);
+	BigInteger& operator = (quint64 num);
 	BigInteger& operator = (const BigInteger &num);
 
 	operator int() const;
