@@ -45,7 +45,7 @@ public:
 	virtual BigInteger generation() const;
 	virtual BigInteger population() const;
 	virtual void rectChange(const BigInteger &x, const BigInteger &y, const BigInteger &, const BigInteger &);
-	virtual void paint(CanvasPainter *canvasPainter, const BigInteger &x, const BigInteger &y, int w, int h);
+	virtual void paint(CanvasPainter *canvasPainter, const BigInteger &x, const BigInteger &y, int w, int h, size_t scale);
 	virtual void runStep();
 
 private:
@@ -56,8 +56,8 @@ private:
 	Node *newNode(size_t depth);
 	Node *emptyNode(size_t depth);
 	void deleteNode(Node *node, size_t depth);
-	inline void drawNode(CanvasPainter *painter, Node *node_ul, Node *node_ur, Node *node_dl, Node *node_dr, int x1, int y1, int x2, int y2, size_t depth, int offset_x, int offset_y);
-	void drawNode(CanvasPainter *painter, Node *node, int x1, int y1, int x2, int y2, size_t depth, int offset_x, int offset_y);
+	inline void drawNode(CanvasPainter *painter, Node *node_ul, Node *node_ur, Node *node_dl, Node *node_dr, int x1, int y1, int x2, int y2, size_t depth, size_t scale, int offset_x, int offset_y);
+	void drawNode(CanvasPainter *painter, Node *node, int x1, int y1, int x2, int y2, size_t depth, size_t scale, int offset_x, int offset_y);
 	void runNode(Node *&p, Node *node, Node *up, Node *down, Node *left, Node *right, Node *upleft, Node *upright, Node *downleft, Node *downright, size_t depth);
 	virtual void run();
 

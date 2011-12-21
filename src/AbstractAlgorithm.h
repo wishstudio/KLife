@@ -38,7 +38,7 @@ public:
 	virtual BigInteger population() const = 0;
 	virtual void getRect(BigInteger *x, BigInteger *y, BigInteger *w, BigInteger *h);
 	virtual void setRect(const BigInteger &x, const BigInteger &y, const BigInteger &w, const BigInteger &h);
-	virtual void paint(CanvasPainter *painter, const BigInteger &x, const BigInteger &y, int w, int h) = 0;
+	virtual void paint(CanvasPainter *painter, const BigInteger &x, const BigInteger &y, int w, int h, size_t scale) = 0;
 	virtual void runStep() = 0;
 
 	virtual bool acceptInfinity() { return m_acceptInfinity; }

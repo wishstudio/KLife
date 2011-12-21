@@ -26,7 +26,7 @@ class BigInteger;
 class CanvasPainter: public QPainter
 {
 public:
-	CanvasPainter(QPaintDevice *device, const BigInteger &view_x, const BigInteger &view_y, int x1, int x2, int y1, int y2, int scalePixel);
+	CanvasPainter(QPaintDevice *device, const BigInteger &view_x, const BigInteger &view_y, int x1, int x2, int y1, int y2, int scale, int scalePixel);
 	virtual ~CanvasPainter();
 
 	void drawGrid(int x, int y, int state);

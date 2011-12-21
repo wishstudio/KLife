@@ -49,7 +49,7 @@ protected:
 private:
 	void resetViewPoint();
 	void viewResized();
-	void scaleView(int scale, int anchor_x, int anchor_y);
+	void scaleView(int scaleDelta, size_t anchor_x, size_t anchor_y);
 	bool eventFilter(QObject *obj, QEvent *event);
 
 	QWidget *m_canvas;
@@ -59,7 +59,8 @@ private:
 	BigInteger m_view_x, m_view_y;
 	int m_scroll_last_x, m_scroll_last_y;
 	int m_vertEdgeSpacing, m_horiEdgeSpacing;
-	int m_scale, m_scalePixel, m_vertGridCount, m_horiGridCount;
+	int m_vertGridCount, m_horiGridCount;
+	size_t m_scale, m_scalePixel;
 };
 
 #endif

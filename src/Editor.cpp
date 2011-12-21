@@ -35,13 +35,14 @@
 #include "CanvasPainter.h"
 #include "Editor.h"
 
-static const int scalePixelCnt = 4;
-static const int scalePixel[5] = {1, 2, 4, 8, 16};
+static const size_t maxScalePixel = 4;
+// Scale ratio is: 2^scale: 2^scalePixel
+// Max scale: 1: 16
 
 Editor::Editor(QWidget *parent)
 	: QWidget(parent), m_rect_x1(0), m_rect_y1(0), m_rect_x2(0), m_rect_y2(0), m_view_x(0), m_view_y(0),
 	  m_scroll_last_x(0), m_scroll_last_y(0),
-	  m_scale(-scalePixelCnt), m_scalePixel(scalePixel[scalePixelCnt])
+	  m_scale(0), m_scalePixel(maxScalePixel)
 {
 	QToolBar *toolbar = new QToolBar();
 	KAction *stepAction = new KAction(this);
@@ -98,8 +99,8 @@ void Editor::rectChanged()
 
 void Editor::viewResized()
 {
-	m_vertGridCount = m_canvas->height() / m_scalePixel;
-	m_horiGridCount = m_canvas->width() / m_scalePixel;
+	m_vertGridCount = m_canvas->height() >> m_scalePixel;
+	m_horiGridCount = m_canvas->width() >> m_scalePixel;
 	m_vertEdgeSpacing = m_horiEdgeSpacing = 5;
 	disconnect(m_vertScroll, SIGNAL(valueChanged(int)), this, SLOT(scrollChanged(int)));
 	if (AlgorithmManager::algorithm()->isVerticalInfinity())
@@ -174,6 +175,7 @@ void Editor::scrollChanged(int)
 		emit update();
 		return;
 	}
+	// FIXME: This is not correct now, fix me when adding back finite grid support
 	if (scrollBar->orientation() == Qt::Vertical)
 	{
 		if (!AlgorithmManager::algorithm()->isVerticalInfinity())
@@ -194,6 +196,7 @@ void Editor::scrollReleased()
 
 void Editor::setViewPoint(const BigInteger &x, const BigInteger &y)
 {
+	// FIXME: This is not correct now, fix me when adding back finite grid support
 	if (!AlgorithmManager::algorithm()->isVerticalInfinity())
 		m_vertScroll->setSliderPosition(y - m_rect_y1 + m_vertEdgeSpacing);
 	else
@@ -210,21 +213,34 @@ void Editor::resetViewPoint()
 	setViewPoint(m_view_x, m_view_y);
 }
 
-void Editor::scaleView(int scale, int anchor_x, int anchor_y)
+void Editor::scaleView(int scaleDelta, size_t anchor_x, size_t anchor_y)
 {
-	if (scale != m_scale)
+	if (scaleDelta)
 	{
-		int old_scalePixel = m_scalePixel;
-		if ((m_scale = scale) >= 0)
-			m_scalePixel = 1;
+		size_t old_scale = m_scale, old_scalePixel = m_scalePixel;
+		if (scaleDelta > 0)
+		{
+			size_t d = qMin(m_scale, static_cast<size_t>(scaleDelta));
+			m_scale -= d;
+			m_scalePixel = qMin(maxScalePixel, m_scalePixel + scaleDelta - d);
+		}
 		else
-			m_scalePixel = scalePixel[-m_scale];
-		m_view_y += anchor_y - anchor_y * old_scalePixel / m_scalePixel;
+		{
+			size_t d = qMin(m_scalePixel, static_cast<size_t>(-scaleDelta));
+			m_scalePixel -= d;
+			m_scale += -scaleDelta - d;
+		}
+		// Formula:
+		// (view_x + x / 2^scalePixel) << scale == (old_view_x + x / 2^old_scalePixel) << old_scale
+		// FIXME: This is not correct now, fix me when adding back finite grid support
+		m_view_y = ((m_view_y + (anchor_y >> old_scalePixel)) << old_scale >> m_scale) - (anchor_y >> m_scalePixel);
 		if (!AlgorithmManager::algorithm()->isVerticalInfinity())
 			m_view_y = qBound(m_rect_y1, m_view_y, m_rect_y2);
-		m_view_x += anchor_x - anchor_x * old_scalePixel / m_scalePixel;
+
+		m_view_x = ((m_view_x + (anchor_x >> old_scalePixel)) << old_scale >> m_scale) - (anchor_x >> m_scalePixel);
 		if (!AlgorithmManager::algorithm()->isHorizontalInfinity())
 			m_view_x = qBound(m_rect_x1, m_view_x, m_rect_x2);
+
 		viewResized();
 	}
 }
@@ -237,20 +253,21 @@ bool Editor::eventFilter(QObject *obj, QEvent *event)
 		{
 		case QEvent::Paint:
 		{
+			size_t scale = qMax(m_scale, 0UL);
 			// Calculate grid size
 			int y1 = 0, y2 = m_vertGridCount;
 			if (!AlgorithmManager::algorithm()->isVerticalInfinity())
 			{
-				y1 = qMax(y1, (int) (m_rect_y1 - m_view_y));
-				y2 = qMin(y2, (int) (m_rect_y2 - m_view_y));
+				y1 = qMax(y1, (int) ((m_rect_y1 >> scale) - m_view_y));
+				y2 = qMin(y2, (int) ((m_rect_y2 >> scale) - m_view_y));
 			}
 			int x1 = 0, x2 = m_horiGridCount;
 			if (!AlgorithmManager::algorithm()->isHorizontalInfinity())
 			{
-				x1 = qMax(x1, (int) (m_rect_x1 - m_view_x));
-				x2 = qMin(x2, (int) (m_rect_x2 - m_view_x));
+				x1 = qMax(x1, (int) ((m_rect_x1 >> scale) - m_view_x));
+				x2 = qMin(x2, (int) ((m_rect_x2 >> scale) - m_view_x));
 			}
-			CanvasPainter painter(m_canvas, m_view_x, m_view_y, x1, x2, y1, y2, m_scalePixel);
+			CanvasPainter painter(m_canvas, m_view_x, m_view_y, x1, x2, y1, y2, qMax(m_scale, 0UL), m_scalePixel);
 			break;
 		}
 
@@ -258,16 +275,20 @@ bool Editor::eventFilter(QObject *obj, QEvent *event)
 		case QEvent::MouseButtonPress:
 		{
 			QMouseEvent *e = static_cast<QMouseEvent *>(event);
-			BigInteger x = m_view_x + e->x() / m_scalePixel, y = m_view_y + e->y() / m_scalePixel;
-			if (e->buttons() & Qt::LeftButton)
+			BigInteger x = (m_view_x + (e->x() >> m_scalePixel)) << m_scale;
+			BigInteger y = (m_view_y + (e->y() >> m_scalePixel)) << m_scale;
+			if (!m_scale)
 			{
-				bool inRange = true;
-				if (!AlgorithmManager::algorithm()->isVerticalInfinity())
-					inRange &= m_rect_x1 <= x && x <= m_rect_x2;
-				if (!AlgorithmManager::algorithm()->isHorizontalInfinity())
-					inRange &= m_rect_y1 <= y && y <= m_rect_y2;
-				if (inRange)
-					AlgorithmManager::algorithm()->setGrid(x, y, 1);
+				if (e->buttons() & Qt::LeftButton)
+				{
+					bool inRange = true;
+					if (!AlgorithmManager::algorithm()->isVerticalInfinity())
+						inRange &= m_rect_x1 <= x && x <= m_rect_x2;
+					if (!AlgorithmManager::algorithm()->isHorizontalInfinity())
+						inRange &= m_rect_y1 <= y && y <= m_rect_y2;
+					if (inRange)
+						AlgorithmManager::algorithm()->setGrid(x, y, 1);
+				}
 			}
 			emit coordinateChanged(x, y);
 			break;
@@ -278,7 +299,7 @@ bool Editor::eventFilter(QObject *obj, QEvent *event)
 			QWheelEvent *e = static_cast<QWheelEvent *>(event);
 			if (e->modifiers() & Qt::ControlModifier) // Scale view
 			{
-				scaleView(qMax(-scalePixelCnt, m_scale - e->delta() / 120), e->x() / m_scalePixel, e->y() / m_scalePixel);
+				scaleView(e->delta() / 120, e->x(), e->y());
 				emit update();
 			}
 			else
@@ -288,7 +309,9 @@ bool Editor::eventFilter(QObject *obj, QEvent *event)
 				else
 					QApplication::sendEvent(m_horiScroll, e);
 			}
-			emit coordinateChanged(m_view_x + e->x() / m_scalePixel, m_view_y + e->y() / m_scalePixel);
+			BigInteger x = (m_view_x + (e->x() >> m_scalePixel)) << m_scale;
+			BigInteger y = (m_view_y + (e->y() >> m_scalePixel)) << m_scale;
+			emit coordinateChanged(x, y);
 			break;
 		}
 

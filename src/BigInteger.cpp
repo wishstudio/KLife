@@ -188,6 +188,13 @@ BigInteger BigInteger::operator + (int num) const
 	return ret;
 }
 
+BigInteger BigInteger::operator + (unsigned long num) const
+{
+	BigInteger ret;
+	mpz_add_ui(ret.data, data, num);
+	return ret;
+}
+
 BigInteger& BigInteger::operator += (const BigInteger &num)
 {
 	mpz_add(data, data, num.data);
@@ -217,6 +224,13 @@ BigInteger BigInteger::operator - (int num) const
 		mpz_sub_ui(ret.data, data, (unsigned long int) num);
 	else
 		mpz_add_ui(ret.data, data, (unsigned long int) -num);
+	return ret;
+}
+
+BigInteger BigInteger::operator - (unsigned long num) const
+{
+	BigInteger ret;
+	mpz_sub_ui(ret.data, data, num);
 	return ret;
 }
 
@@ -253,6 +267,32 @@ BigInteger BigInteger::operator / (int num) const
 		mpz_neg(ret.data, ret.data);
 	}
 	return ret;
+}
+
+BigInteger BigInteger::operator << (size_t num) const
+{
+	BigInteger ret;
+	mpz_mul_2exp(ret.data, data, num);
+	return ret;
+}
+
+BigInteger& BigInteger::operator <<= (size_t num)
+{
+	mpz_mul_2exp(data, data, num);
+	return *this;
+}
+
+BigInteger BigInteger::operator >> (size_t num) const
+{
+	BigInteger ret;
+	mpz_div_2exp(ret.data, data, num);
+	return ret;
+}
+
+BigInteger& BigInteger::operator >>= (size_t num)
+{
+	mpz_div_2exp(data, data, num);
+	return *this;
 }
 
 bool BigInteger::operator == (const BigInteger &num) const

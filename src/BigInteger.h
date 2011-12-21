@@ -56,16 +56,24 @@ public:
 
 	BigInteger operator + (const BigInteger &num) const;
 	BigInteger operator + (int num) const;
+	BigInteger operator + (unsigned long num) const;
 	BigInteger& operator += (const BigInteger &num);
 	BigInteger& operator += (int num);
 
 	BigInteger operator - (const BigInteger &num) const;
 	BigInteger operator - (int num) const;
+	BigInteger operator - (unsigned long num) const;
 	BigInteger& operator -= (const BigInteger &num);
 	BigInteger& operator -= (int num);
 
 	BigInteger operator * (int num) const;
 	BigInteger operator / (int num) const;
+
+	BigInteger operator << (size_t num) const;
+	BigInteger& operator <<= (size_t num);
+
+	BigInteger operator >> (size_t num) const;
+	BigInteger& operator >>= (size_t num);
 
 	bool operator == (const BigInteger &num) const;
 	bool operator == (int num) const;
