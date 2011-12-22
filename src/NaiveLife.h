@@ -47,10 +47,10 @@ public:
 	virtual BigInteger population() const;
 	virtual void rectChange(const BigInteger &x, const BigInteger &y, const BigInteger &, const BigInteger &);
 	virtual void paint(CanvasPainter *canvasPainter, const BigInteger &x, const BigInteger &y, int w, int h, size_t scale);
-	virtual void walkDown(const BigInteger &x, const BigInteger &y, int w, int h, Node **node_ul, Node **node_ur, Node **node_dl, Node **node_dr, size_t *depth);
 	virtual void runStep();
 
 private:
+	inline void walkDown(const BigInteger &x, const BigInteger &y, int w, int h, Node **&node_ul, Node **&node_ur, Node **&node_dl, Node **&node_dr, size_t &depth, Node *rec_ul[], Node *rec_ur[], Node *rec_dl[], Node *rec_dr[], bool record = false);
 	void expand();
 	inline void computeBlockActiveFlag(Block *block);
 	inline void computeNodeInfo(Node *node, size_t depth);
@@ -58,8 +58,8 @@ private:
 	Node *newNode(size_t depth);
 	Node *emptyNode(size_t depth);
 	void deleteNode(Node *node, size_t depth);
-	inline void fillRect(Node *node_ul, Node *node_ur, Node *node_dl, Node *node_dr, int x1, int y1, int x2, int y2, int state, size_t depth);
-	void fillRect(Node *node, int x1, int y1, int x2, int y2, int state, size_t depth);
+	inline void fillRect(Node *&node_ul, Node *&node_ur, Node *&node_dl, Node *&node_dr, int x1, int y1, int x2, int y2, int state, size_t depth);
+	void fillRect(Node *&node, int x1, int y1, int x2, int y2, int state, size_t depth);
 	inline void drawNode(CanvasPainter *painter, Node *node_ul, Node *node_ur, Node *node_dl, Node *node_dr, int x1, int y1, int x2, int y2, size_t depth, size_t scale, int offset_x, int offset_y);
 	void drawNode(CanvasPainter *painter, Node *node, int x1, int y1, int x2, int y2, size_t depth, size_t scale, int offset_x, int offset_y);
 	void runNode(Node *&p, Node *node, Node *up, Node *down, Node *left, Node *right, Node *upleft, Node *upright, Node *downleft, Node *downright, size_t depth);

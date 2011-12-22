@@ -17,34 +17,32 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-#include <KAboutData>
-#include <KApplication>
-#include <KCmdLineArgs>
+#ifndef TEXTSTREAM_H
+#define TEXTSTREAM_H
 
-#include "MainWindow.h"
+#include <QStack>
+#include <QTextStream>
 
-#include <QDebug>
-#include <QString>
-int main(int argc, char **argv)
+class BigInteger;
+class TextStream: private QTextStream
 {
-	KAboutData aboutData(
-		"KLife",
-		0,
-		ki18n("KLife"),
-		"0.1",
-		ki18n("A simulator and analyzer for Conway's Game of Life and other cellular automations."),
-		KAboutData::License_GPL_V3,
-		ki18n("(c) 2011 Xiangyan Sun"),
-		ki18n(""),
-		"",
-		"wishstudio@gmail.com");
-	aboutData.addAuthor(ki18n("Xiangyan Sun"), ki18n("Project founder, main developer"), "wishstudio@gmail.com", "", "");
-	KCmdLineArgs::init(argc, argv, &aboutData);
+public:
+	TextStream(QIODevice *device);
 
-	KApplication app;
+	bool atEnd() { return QTextStream::atEnd(); }
+	QChar peek();
+	QChar getChar();
+	void ungetChar(QChar ch);
+	void skipWhiteSpace();
+	void skipLine();
 
-	MainWindow *window = new MainWindow();
-	window->show();
+	TextStream& operator >> (QChar &ch);
+	TextStream& operator >> (QString &str);
+	TextStream& operator >> (BigInteger &num);
+	TextStream& operator >> (int &num);
 
-	return app.exec();
-}
+private:
+	QStack<QChar> back;
+};
+
+#endif

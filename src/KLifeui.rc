@@ -9,11 +9,13 @@
 	<MenuBar>
 		<Menu name="file" >
 			<Action name="new" />
+			<Action name="open" />
 		</Menu>
 	</MenuBar>
 	
 	<ToolBar name="mainToolBar" >
 		<text>Main Toolbar</text>
 		<Action name="new" />
+		<Action name="open" />
 	</ToolBar>
 </gui>

@@ -35,6 +35,8 @@ public:
 public slots:
 	void coordinateChanged(const BigInteger &x, const BigInteger &y);
 	void gridChanged();
+	void newAction();
+	void openAction();
 
 private:
 	void setupActions();

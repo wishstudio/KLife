@@ -17,34 +17,29 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-#include <KAboutData>
-#include <KApplication>
-#include <KCmdLineArgs>
+#ifndef FILEFORMATMANAGER_H
+#define FILEFORMATMANAGER_H
 
-#include "MainWindow.h"
+#include <QMap>
 
-#include <QDebug>
-#include <QString>
-int main(int argc, char **argv)
+#include "Utils.h"
+
+class AbstractFileFormat;
+class FileFormatManager: public QObject
 {
-	KAboutData aboutData(
-		"KLife",
-		0,
-		ki18n("KLife"),
-		"0.1",
-		ki18n("A simulator and analyzer for Conway's Game of Life and other cellular automations."),
-		KAboutData::License_GPL_V3,
-		ki18n("(c) 2011 Xiangyan Sun"),
-		ki18n(""),
-		"",
-		"wishstudio@gmail.com");
-	aboutData.addAuthor(ki18n("Xiangyan Sun"), ki18n("Project founder, main developer"), "wishstudio@gmail.com", "", "");
-	KCmdLineArgs::init(argc, argv, &aboutData);
+	Q_OBJECT
 
-	KApplication app;
+public:
+	static FileFormatManager *self();
+	static void registerFileFormat(AbstractFileFormat *format);
+	static QString fileFilter();
+	static bool readFile(QString fileName);
 
-	MainWindow *window = new MainWindow();
-	window->show();
+private:
+	QString filters, allExtensions;
+	QMap<QString, AbstractFileFormat *> formats;
+};
 
-	return app.exec();
-}
+#define REGISTER_FILEFORMAT(fileFormatClass) REGISTER_FACTORY_STATIC_CLASS(FileFormat, FileFormatManager, fileFormatClass)
+
+#endif

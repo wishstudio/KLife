@@ -54,4 +54,14 @@ public: \
 	virtual Abstract##baseClassName *create##baseClassName() { return new className(); } \
 } ___##factoryClassName##className##Factory_INSTANCE;
 
+#define REGISTER_FACTORY_STATIC_CLASS(baseClassName, factoryClassName, className) \
+class ___##baseClassName##className##Static \
+{ \
+public: \
+	___##baseClassName##className##Static() \
+	{ \
+		factoryClassName::register##baseClassName(new className()); \
+	} \
+} ___##factoryClassName##className##Static_INSTANCE;
+
 #endif

@@ -17,34 +17,17 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-#include <KAboutData>
-#include <KApplication>
-#include <KCmdLineArgs>
+#ifndef RLEFORMAT_H
+#define RLEFORMAT_H
 
-#include "MainWindow.h"
+#include "AbstractFileFormat.h"
 
-#include <QDebug>
-#include <QString>
-int main(int argc, char **argv)
+class RLEFormat: public AbstractFileFormat
 {
-	KAboutData aboutData(
-		"KLife",
-		0,
-		ki18n("KLife"),
-		"0.1",
-		ki18n("A simulator and analyzer for Conway's Game of Life and other cellular automations."),
-		KAboutData::License_GPL_V3,
-		ki18n("(c) 2011 Xiangyan Sun"),
-		ki18n(""),
-		"",
-		"wishstudio@gmail.com");
-	aboutData.addAuthor(ki18n("Xiangyan Sun"), ki18n("Project founder, main developer"), "wishstudio@gmail.com", "", "");
-	KCmdLineArgs::init(argc, argv, &aboutData);
+public:
+	virtual QString formatName() const;
+	virtual QList<QString> supportedFormats() const;
+	virtual bool readDevice(QIODevice *device, AbstractAlgorithm *algorithm);
+};
 
-	KApplication app;
-
-	MainWindow *window = new MainWindow();
-	window->show();
-
-	return app.exec();
-}
+#endif

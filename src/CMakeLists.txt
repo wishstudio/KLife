@@ -17,7 +17,7 @@ add_definitions(${QT_DEFINITIONS} ${KDE4_DEFINITIONS})
 
 include_directories(${QT_INCLUDE} ${KDE4_INCLUDES} ${GMP_INCLUDE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
 
-set(KLife_SRCS main.cpp AbstractAlgorithm.cpp AlgorithmManager.cpp BigInteger.cpp CanvasPainter.cpp Editor.cpp HashLife.cpp MainWindow.cpp MemoryManager.cpp NaiveLife.cpp Utils.cpp)
+set(KLife_SRCS main.cpp AbstractAlgorithm.cpp AbstractFileFormat.cpp AlgorithmManager.cpp BigInteger.cpp CanvasPainter.cpp Editor.cpp FileFormatManager.cpp HashLife.cpp MainWindow.cpp MemoryManager.cpp NaiveLife.cpp RLEFormat.cpp TextStream.cpp Utils.cpp)
 
 kde4_add_executable(KLife ${KLife_SRCS})
 
