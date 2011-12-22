@@ -22,25 +22,16 @@
 
 #include <QObject>
 
+#include "Utils.h"
+
 class AbstractAlgorithm;
 class AlgorithmManager: public QObject
 {
 	Q_OBJECT
 
 public:
-	class AbstractAlgorithmFactory
-	{
-	public:
-		virtual ~AbstractAlgorithmFactory() {}
-		virtual AbstractAlgorithm *createAlgorithm() = 0;
-	};
+	ABSTRACT_FACTORY(Algorithm)
 
-	template<typename algorithmClass>
-	class AlgorithmFactory: public AbstractAlgorithmFactory
-	{
-	public:
-		virtual AbstractAlgorithm *createAlgorithm() { return new algorithmClass(); }
-	};
 	static AlgorithmManager *self();
 	static AbstractAlgorithm *algorithm() { return self()->m_algorithm; }
 	static void registerAlgorithm(AbstractAlgorithmFactory *algorithmFactory);
@@ -58,15 +49,6 @@ private:
 	QList<AbstractAlgorithmFactory *> m_factory;
 };
 
-#define REGISTER_ALGORITHM(algorithmClass) \
-class ALGORITHM_##algorithmClass##_FACTORY: public AlgorithmManager::AbstractAlgorithmFactory \
-{ \
-public: \
-	ALGORITHM_##algorithmClass##_FACTORY() \
-	{ \
-		AlgorithmManager::registerAlgorithm(this); \
-	} \
-	virtual AbstractAlgorithm *createAlgorithm() { return new algorithmClass(); } \
-} ALGORITHM_##algorithmClass##_FACTORY_INSTANCE;
+#define REGISTER_ALGORITHM(algorithmClass) REGISTER_FACTORY_CLASS(Algorithm, AlgorithmManager, algorithmClass)
 
 #endif
