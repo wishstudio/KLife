@@ -66,6 +66,8 @@ NaiveLife::NaiveLife()
 {
 	setAcceptInfinity(false);
 	m_emptyNode.resize(BLOCK_DEPTH + 1);
+	for (size_t i = 0; i < BLOCK_DEPTH; i++)
+		m_emptyNode[i] = NULL;
 	m_emptyNode[BLOCK_DEPTH] = reinterpret_cast<Node *>(newBlock());
 	reinterpret_cast<Block *>(m_emptyNode[BLOCK_DEPTH])->flag = 0;
 	// initially a 16x16 block
@@ -166,18 +168,25 @@ void NaiveLife::setGrid(const BigInteger &x, const BigInteger &y, int state)
 void NaiveLife::fillRect(const BigInteger &x, const BigInteger &y, int w, int h, int state)
 {
 	// out of range
-	BigInteger x2 = x + (w - 1), y2 = y + (h - 1);
-	while (x2.bitCount() > m_depth || y2.bitCount() > m_depth)
+	BigInteger x1 = x - m_x, y1 = y - m_y, x2 = x1 + (w - 1), y2 = y1 + (h - 1);
+	// TODO optimization
+	while (x1.sgn() < 0 || x2.bitCount() > m_depth || y1.sgn() < 0 || y2.bitCount() > m_depth)
+	{
 		expand();
+		x1 = x - m_x;
+		y1 = y - m_y;
+		x2 = x1 + (w - 1);
+		y2 = y1 + (h - 1);
+	}
 
 	// Step 1
 	size_t depth = m_depth;
 	Node **node_ul, **node_ur, **node_dl, **node_dr;
 	Node *rec_ul[m_depth + 1], *rec_ur[m_depth + 1], *rec_dl[m_depth + 1], *rec_dr[m_depth + 1];
-	walkDown(x, y, w, h, node_ul, node_ur, node_dl, node_dr, depth, rec_ul, rec_ur, rec_dl, rec_dr, true);
+	walkDown(x1, y1, w, h, node_ul, node_ur, node_dl, node_dr, depth, rec_ul, rec_ur, rec_dl, rec_dr, true);
 
 	// Step 2
-	int sx1 = x.lowbits(depth), sy1 = y.lowbits(depth);
+	int sx1 = x1.lowbits(depth), sy1 = y1.lowbits(depth);
 	fillRect(*node_ul, *node_ur, *node_dl, *node_dr, sx1, sy1, sx1 + w - 1, sy1 + h - 1, state, depth);
 
 	for (size_t d = depth + 1; d <= m_depth; d++)
@@ -195,11 +204,11 @@ inline void NaiveLife::fillRect(Node *&node_ul, Node *&node_ur, Node *&node_dl, 
 {
 	int len = 1 << depth;
 	if (x1 < len && y1 < len)
-		fillRect(node_ul, x1, y1, qMin(x2, len), qMin(y2, len), state, depth);
+		fillRect(node_ul, x1, y1, qMin(x2, len - 1), qMin(y2, len - 1), state, depth);
 	if (x2 >= len && y1 < len)
-		fillRect(node_ur, qMax(x1 - len, 0), y1, x2 - len, qMin(y2, len), state, depth);
+		fillRect(node_ur, qMax(x1 - len, 0), y1, x2 - len, qMin(y2, len - 1), state, depth);
 	if (x1 < len && y2 >= len)
-		fillRect(node_dl, x1, qMax(y1 - len, 0), qMin(x2, len), y2 - len, state, depth);
+		fillRect(node_dl, x1, qMax(y1 - len, 0), qMin(x2, len - 1), y2 - len, state, depth);
 	if (x2 >= len && y2 >= len)
 		fillRect(node_dr, qMax(x1 - len, 0), qMax(y1 - len, 0), x2 - len, y2 - len, state, depth);
 }
@@ -395,17 +404,14 @@ Node *NaiveLife::newNode(size_t depth)
 	return ret;
 }
 
-Node *NaiveLife::emptyNode(size_t depth)
+Node *&NaiveLife::emptyNode(size_t depth)
 {
-	if (depth < BLOCK_DEPTH)
-		return NULL;
-	else if (static_cast<size_t>(m_emptyNode.size()) > depth)
+	if (static_cast<size_t>(m_emptyNode.size()) > depth)
 		return m_emptyNode[depth];
 	else
 	{
-		Node *ret = newNode(depth);
-		m_emptyNode.push_back(ret);
-		return ret;
+		m_emptyNode.push_back(newNode(depth));
+		return m_emptyNode.last();
 	}
 }
 
@@ -445,11 +451,10 @@ void NaiveLife::deleteNode(Node *node, size_t depth)
 // After walkdown(), we can guarantee all the coordinates fit in ints.
 inline void NaiveLife::walkDown(const BigInteger &x, const BigInteger &y, int w, int h, Node **&node_ul, Node **&node_ur, Node **&node_dl, Node **&node_dr, size_t &depth, Node *rec_ul[], Node *rec_ur[], Node *rec_dl[], Node *rec_dr[], bool record)
 {
-	Node *_node_ul = m_root, *_node_ur = emptyNode(m_depth), *_node_dl = emptyNode(m_depth), *_node_dr = emptyNode(m_depth);
-	node_ul = &_node_ul;
-	node_ur = &_node_ur;
-	node_dl = &_node_dl;
-	node_dr = &_node_dr;
+	node_ul = &m_root;
+	node_ur = &emptyNode(m_depth);
+	node_dl = &emptyNode(m_depth);
+	node_dr = &emptyNode(m_depth);
 	size_t endDepth = qMax(static_cast<size_t>(qMax(bitlen(w), bitlen(h))), BLOCK_DEPTH);
 	while (depth > endDepth)
 	{
@@ -460,7 +465,6 @@ inline void NaiveLife::walkDown(const BigInteger &x, const BigInteger &y, int w,
 			rec_dl[depth] = *node_dl;
 			rec_dr[depth] = *node_dr;
 		}
-		qDebug() << ((y.bit(depth - 1) << 1) | x.bit(depth - 1));
 		switch ((y.bit(depth - 1) << 1) | x.bit(depth - 1))
 		{
 		case 0:
@@ -567,11 +571,11 @@ inline void NaiveLife::drawNode(CanvasPainter *painter, Node *node_ul, Node *nod
 {
 	int len = 1 << depth;
 	if (x1 < len && y1 < len)
-		drawNode(painter, node_ul, x1, y1, qMin(x2, len), qMin(y2, len), depth, scale, offset_x, offset_y);
+		drawNode(painter, node_ul, x1, y1, qMin(x2, len - 1), qMin(y2, len - 1), depth, scale, offset_x, offset_y);
 	if (x2 >= len && y1 < len)
-		drawNode(painter, node_ur, qMax(x1 - len, 0), y1, x2 - len, qMin(y2, len), depth, scale, offset_x + len, offset_y);
+		drawNode(painter, node_ur, qMax(x1 - len, 0), y1, x2 - len, qMin(y2, len - 1), depth, scale, offset_x + len, offset_y);
 	if (x1 < len && y2 >= len)
-		drawNode(painter, node_dl, x1, qMax(y1 - len, 0), qMin(x2, len), y2 - len, depth, scale, offset_x, offset_y + len);
+		drawNode(painter, node_dl, x1, qMax(y1 - len, 0), qMin(x2, len - 1), y2 - len, depth, scale, offset_x, offset_y + len);
 	if (x2 >= len && y2 >= len)
 		drawNode(painter, node_dr, qMax(x1 - len, 0), qMax(y1 - len, 0), x2 - len, y2 - len, depth, scale, offset_x + len, offset_y + len);
 }

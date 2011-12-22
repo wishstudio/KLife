@@ -56,7 +56,7 @@ private:
 	inline void computeNodeInfo(Node *node, size_t depth);
 	Block *newBlock();
 	Node *newNode(size_t depth);
-	Node *emptyNode(size_t depth);
+	Node *&emptyNode(size_t depth);
 	void deleteNode(Node *node, size_t depth);
 	inline void fillRect(Node *&node_ul, Node *&node_ur, Node *&node_dl, Node *&node_dr, int x1, int y1, int x2, int y2, int state, size_t depth);
 	void fillRect(Node *&node, int x1, int y1, int x2, int y2, int state, size_t depth);
