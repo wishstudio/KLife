@@ -33,6 +33,7 @@ public:
 	virtual QString name() = 0;
 	virtual int grid(const BigInteger &x, const BigInteger &y) = 0;
 	virtual void setGrid(const BigInteger &x, const BigInteger &y, int state) = 0;
+	virtual void fillRect(const BigInteger &x, const BigInteger &y, int w, int h, int state) = 0;
 	virtual void clearGrid() = 0;
 	virtual BigInteger generation() const = 0;
 	virtual BigInteger population() const = 0;

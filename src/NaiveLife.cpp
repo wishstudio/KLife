@@ -163,6 +163,58 @@ void NaiveLife::setGrid(const BigInteger &x, const BigInteger &y, int state)
 	emit gridChanged();
 }
 
+void NaiveLife::fillRect(const BigInteger &x, const BigInteger &y, int w, int h, int state)
+{
+	// out of range
+	BigInteger x2 = x + (w - 1), y2 = y + (h - 1);
+	while (x2.bitCount() > m_depth || y2.bitCount() > m_depth)
+		expand();
+
+	// Step 1
+	size_t depth = m_depth;
+	Node *node_ul, *node_ur, *node_dl, *node_dr;
+	walkDown(x, y, w, h, &node_ul, &node_ur, &node_dl, &node_dr, &depth);
+
+	// Step 2
+	int sx1 = x.lowbits(depth), sy1 = y.lowbits(depth);
+	fillRect(node_ul, node_ur, node_dl, node_dr, sx1, sy1, sx1 + w - 1, sy1 + h - 1, state, depth);
+
+	emit gridChanged();
+}
+
+inline void NaiveLife::fillRect(Node *node_ul, Node *node_ur, Node *node_dl, Node *node_dr, int x1, int y1, int x2, int y2, int state, size_t depth)
+{
+	int len = 1 << depth;
+	if (x1 < len && y1 < len)
+		fillRect(node_ul, x1, y1, qMin(x2, len), qMin(y2, len), state, depth);
+	if (x2 >= len && y1 < len)
+		fillRect(node_ur, qMax(x1 - len, 0), y1, x2 - len, qMin(y2, len), state, depth);
+	if (x1 < len && y2 >= len)
+		fillRect(node_dl, x1, qMax(y1 - len, 0), qMin(x2, len), y2 - len, state, depth);
+	if (x2 >= len && y2 >= len)
+		fillRect(node_dr, qMax(x1 - len, 0), qMax(y1 - len, 0), x2 - len, y2 - len, state, depth);
+}
+
+void NaiveLife::fillRect(Node *node, int x1, int y1, int x2, int y2, int state, size_t depth)
+{
+	if (depth == BLOCK_DEPTH)
+	{
+		Block *block = reinterpret_cast<Block *>(node);
+		block->population = 0;
+		for (int x = x1; x <= x2; x++)
+			for (int y = y1; y <= y2; y++)
+				if ((block->data[y][x] = state))
+					block->population++;
+		SET_BIT(block->flag, CHANGED);
+		computeBlockActiveFlag(block);
+	}
+	else
+	{
+		fillRect(node->ul, node->ur, node->dl, node->dr, x1, y1, x2, y2, state, depth - 1);
+		computeNodeInfo(node, depth);
+	}
+}
+
 void NaiveLife::clearGrid()
 {
 	m_writeLock->lock();
@@ -350,9 +402,8 @@ void NaiveLife::deleteNode(Node *node, size_t depth)
 	}
 }
 
-// Some magic in paint() to get rid of BigInteger manipulation:
-// The drawing is divided into 2 steps:
-// 1) walk down 4 nodes cover the drawing area
+// Magic in walkDOwn() to get rid of BigInteger manipulation:
+// We walk down and find 4 nodes cover the drawing area
 // We have to guarantee coordinate (x, y) is in node ul during the process.
 // Firstly set ul to root, and other nodes to the magic empty node, like
 //  ul  0
@@ -360,9 +411,68 @@ void NaiveLife::deleteNode(Node *node, size_t depth)
 // Then walk down the tree, we continually divide ul into 4 smaller parts
 // Because 2^(level-1) is larger than w and h so the needed childs of 4 nodes
 // are unique, when depth > endDepth
-//
-// 2) draw these 4 nodes
-// We can guarantee the coordinates fits in int now.
+// After walkdown(), we can guarantee all the coordinates fit in ints.
+void NaiveLife::walkDown(const BigInteger &x, const BigInteger &y, int w, int h, Node **node_ul, Node **node_ur, Node **node_dl, Node **node_dr, size_t *depth)
+{
+	Node *_node_ul = m_root, *_node_ur = emptyNode(m_depth), *_node_dl = emptyNode(m_depth), *_node_dr = emptyNode(m_depth);
+	size_t _depth = *depth, endDepth = qMax(static_cast<size_t>(qMax(bitlen(w), bitlen(h))), BLOCK_DEPTH);
+	while (_depth > endDepth)
+	{
+		switch ((y.bit(_depth - 1) << 1) | x.bit(_depth - 1))
+		{
+		case 0:
+			//  ul ur  0  0
+			//  dl dr  0  0
+			//   0  0  0  0
+			//   0  0  0  0
+			_node_ur = _node_ul->ur;
+			_node_dl = _node_ul->dl;
+			_node_dr = _node_ul->dr;
+			_node_ul = _node_ul->ul;
+			break;
+
+		case 1:
+			//   0 ul ur  0
+			//   0 dl dr  0
+			//   0  0  0  0
+			//   0  0  0  0
+			_node_dl = _node_ul->dr;
+			_node_ul = _node_ul->ur;
+			_node_dr = _node_ur->dl;
+			_node_ur = _node_ur->ul;
+			break;
+
+		case 2:
+			//   0  0  0  0
+			//  ul ur  0  0
+			//  dl dr  0  0
+			//   0  0  0  0
+			_node_ur = _node_ul->dr;
+			_node_ul = _node_ul->dl;
+			_node_dr = _node_dl->ur;
+			_node_dl = _node_dl->ul;
+			break;
+
+		case 3:
+			//   0  0  0  0
+			//   0 ul ur  0
+			//   0 dl dr  0
+			//   0  0  0  0
+			_node_ul = _node_ul->dr;
+			_node_ur = _node_ur->dl;
+			_node_dl = _node_dl->ur;
+			_node_dr = _node_dr->ul;
+			break;
+		}
+		_depth--;
+	}
+	*node_ul = _node_ul;
+	*node_ur = _node_ur;
+	*node_dl = _node_dl;
+	*node_dr = _node_dr;
+	*depth = _depth;
+}
+
 void NaiveLife::paint(CanvasPainter *painter, const BigInteger &x, const BigInteger &y, int w, int h, size_t scale)
 {
 	m_readLock->lock();
@@ -404,58 +514,9 @@ void NaiveLife::paint(CanvasPainter *painter, const BigInteger &x, const BigInte
 			h = len - y1;
 
 		// Step 1
-		size_t endDepth = qMax(static_cast<size_t>(qMax(bitlen(w), bitlen(h))), BLOCK_DEPTH), depth = m_depth - scale;
-		Node *node_ul = m_root, *node_ur = emptyNode(m_depth), *node_dl = emptyNode(m_depth), *node_dr = emptyNode(m_depth);
-		while (depth > endDepth)
-		{
-			switch ((y1.bit(depth - 1) << 1) | x1.bit(depth - 1))
-			{
-			case 0:
-				//  ul ur  0  0
-				//  dl dr  0  0
-				//   0  0  0  0
-				//   0  0  0  0
-				node_ur = node_ul->ur;
-				node_dl = node_ul->dl;
-				node_dr = node_ul->dr;
-				node_ul = node_ul->ul;
-				break;
-
-			case 1:
-				//   0 ul ur  0
-				//   0 dl dr  0
-				//   0  0  0  0
-				//   0  0  0  0
-				node_dl = node_ul->dr;
-				node_ul = node_ul->ur;
-				node_dr = node_ur->dl;
-				node_ur = node_ur->ul;
-				break;
-
-			case 2:
-				//   0  0  0  0
-				//  ul ur  0  0
-				//  dl dr  0  0
-				//   0  0  0  0
-				node_ur = node_ul->dr;
-				node_ul = node_ul->dl;
-				node_dr = node_dl->ur;
-				node_dl = node_dl->ul;
-				break;
-
-			case 3:
-				//   0  0  0  0
-				//   0 ul ur  0
-				//   0 dl dr  0
-				//   0  0  0  0
-				node_ul = node_ul->dr;
-				node_ur = node_ur->dl;
-				node_dl = node_dl->ur;
-				node_dr = node_dr->ul;
-				break;
-			}
-			depth--;
-		}
+		size_t depth = m_depth - scale;
+		Node *node_ul, *node_ur, *node_dl, *node_dr;
+		walkDown(x1, y1, w, h, &node_ul, &node_ur, &node_dl, &node_dr, &depth);
 
 		// Step 2
 		int sx1 = x1.lowbits(depth), sy1 = y1.lowbits(depth);
