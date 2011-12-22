@@ -50,7 +50,7 @@ public:
 	virtual void runStep();
 
 private:
-	inline void walkDown(const BigInteger &x, const BigInteger &y, int w, int h, Node **&node_ul, Node **&node_ur, Node **&node_dl, Node **&node_dr, size_t &depth, Node *rec_ul[], Node *rec_ur[], Node *rec_dl[], Node *rec_dr[], bool record = false);
+	void walkDown(const BigInteger &x, const BigInteger &y, int w, int h, Node **&node_ul, Node **&node_ur, Node **&node_dl, Node **&node_dr, size_t &depth, Node *rec_ul[], Node *rec_ur[], Node *rec_dl[], Node *rec_dr[], bool record = false);
 	void expand();
 	inline void computeBlockActiveFlag(Block *block);
 	inline void computeNodeInfo(Node *node, size_t depth);

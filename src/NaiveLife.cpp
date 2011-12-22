@@ -167,6 +167,9 @@ void NaiveLife::setGrid(const BigInteger &x, const BigInteger &y, int state)
 
 void NaiveLife::fillRect(const BigInteger &x, const BigInteger &y, int w, int h, int state)
 {
+//	for (int i = 0; i < w; i++)
+//		for (int j = 0; j < h; j++)
+//			setGrid(x + i, y + j, state);
 	// out of range
 	BigInteger x1 = x - m_x, y1 = y - m_y, x2 = x1 + (w - 1), y2 = y1 + (h - 1);
 	// TODO optimization
@@ -220,10 +223,9 @@ void NaiveLife::fillRect(Node *&node, int x1, int y1, int x2, int y2, int state,
 		if (node == emptyNode(depth))
 			node = reinterpret_cast<Node *>(newBlock());
 		Block *block = reinterpret_cast<Block *>(node);
-		block->flag = BIT(CHANGED);
+		block->flag |= BIT(CHANGED);
 		for (int x = x1; x <= x2; x++)
 			for (int y = y1; y <= y2; y++)
-			{
 				if (block->data[y][x] != state)
 				{
 					if (y == 0)
@@ -240,7 +242,6 @@ void NaiveLife::fillRect(Node *&node, int x1, int y1, int x2, int y2, int state,
 						block->population--;
 					block->data[y][x] = state;
 				}
-			}
 		computeBlockActiveFlag(block);
 	}
 	else
@@ -449,17 +450,29 @@ void NaiveLife::deleteNode(Node *node, size_t depth)
 // Because 2^(level-1) is larger than w and h so the needed childs of 4 nodes
 // are unique, when depth > endDepth
 // After walkdown(), we can guarantee all the coordinates fit in ints.
-inline void NaiveLife::walkDown(const BigInteger &x, const BigInteger &y, int w, int h, Node **&node_ul, Node **&node_ur, Node **&node_dl, Node **&node_dr, size_t &depth, Node *rec_ul[], Node *rec_ur[], Node *rec_dl[], Node *rec_dr[], bool record)
+void NaiveLife::walkDown(const BigInteger &x, const BigInteger &y, int w, int h, Node **&node_ul, Node **&node_ur, Node **&node_dl, Node **&node_dr, size_t &depth, Node *rec_ul[], Node *rec_ur[], Node *rec_dl[], Node *rec_dr[], bool record)
 {
 	node_ul = &m_root;
 	node_ur = &emptyNode(m_depth);
 	node_dl = &emptyNode(m_depth);
 	node_dr = &emptyNode(m_depth);
+	size_t realDepth = m_depth;
 	size_t endDepth = qMax(static_cast<size_t>(qMax(bitlen(w), bitlen(h))), BLOCK_DEPTH);
+	bool ok_ur = false, ok_dl = false, ok_dr = false;
 	while (depth > endDepth)
 	{
 		if (record)
 		{
+			Node *e = emptyNode(realDepth);
+			if (*node_ul == e)
+				*node_ul = newNode(realDepth);
+			if (*node_ur == e && ok_ur)
+				*node_ur = newNode(realDepth);
+			if (*node_dl == e && ok_dl)
+				*node_dl = newNode(realDepth);
+			if (*node_dr == e && ok_dr)
+				*node_dr = newNode(realDepth);
+
 			rec_ul[depth] = *node_ul;
 			rec_ur[depth] = *node_ur;
 			rec_dl[depth] = *node_dl;
@@ -476,6 +489,8 @@ inline void NaiveLife::walkDown(const BigInteger &x, const BigInteger &y, int w,
 			node_dl = &(*node_ul)->dl;
 			node_dr = &(*node_ul)->dr;
 			node_ul = &(*node_ul)->ul;
+
+			ok_ur = ok_dl = ok_dr = true;
 			break;
 
 		case 1:
@@ -487,6 +502,9 @@ inline void NaiveLife::walkDown(const BigInteger &x, const BigInteger &y, int w,
 			node_ul = &(*node_ul)->ur;
 			node_dr = &(*node_ur)->dl;
 			node_ur = &(*node_ur)->ul;
+
+			ok_dl = true;
+			ok_dr |= ok_ur;
 			break;
 
 		case 2:
@@ -498,6 +516,9 @@ inline void NaiveLife::walkDown(const BigInteger &x, const BigInteger &y, int w,
 			node_ul = &(*node_ul)->dl;
 			node_dr = &(*node_dl)->ur;
 			node_dl = &(*node_dl)->ul;
+
+			ok_ur = true;
+			ok_dr |= ok_dl;
 			break;
 
 		case 3:
@@ -512,6 +533,7 @@ inline void NaiveLife::walkDown(const BigInteger &x, const BigInteger &y, int w,
 			break;
 		}
 		depth--;
+		realDepth--;
 	}
 }
 

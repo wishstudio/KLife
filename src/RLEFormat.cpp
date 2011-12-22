@@ -91,14 +91,23 @@ bool RLEFormat::readDevice(QIODevice *device, AbstractAlgorithm *algorithm)
 			S.ungetChar(ch);
 			int cnt;
 			S >> cnt;
-			if (cnt <= 0 || x + cnt > w)
+			if (cnt <= 0)
 				return false;
 			S >> ch;
-			if (ch == 'o')
+			if (ch == QChar('o'))
+			{
 				algorithm->fillRect(x1 + x, y1 + y, cnt, 1, 1);
-			else if (ch != 'b')
+				x += cnt;
+			}
+			else if (ch == QChar('b'))
+				x += cnt;
+			else if (ch == QChar('$'))
+			{
+				y += cnt;
+				x = 0;
+			}
+			else
 				return false;
-			x += cnt;
 		}
 	}
 	return false;
