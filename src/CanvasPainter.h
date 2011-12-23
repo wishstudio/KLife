@@ -20,6 +20,7 @@
 #ifndef CANVASPAINTER_H
 #define CANVASPAINTER_H
 
+#include <QRgb>
 #include <QPainter>
 
 class BigInteger;
@@ -29,11 +30,21 @@ public:
 	CanvasPainter(QPaintDevice *device, const BigInteger &view_x, const BigInteger &view_y, int x1, int x2, int y1, int y2, int scale, int scalePixel);
 	virtual ~CanvasPainter();
 
-	void drawGrid(int x, int y, int state);
-	void fillGrid(int x, int y, int w, int h, int state);
+	// This function is very time consuming
+	// So trying inline for some speed improvement
+	inline void drawGrid(int x, int y, int state)
+	{
+		m_data[y * m_w + x] = state? qRgb(0xFF, 0xFF, 0xFF): qRgb(0x30, 0x30, 0x30);
+	}
+
+	inline void fillBlack()
+	{
+		memset(m_data, 0x30, m_w * m_h * sizeof(QRgb));
+	}
 
 private:
-	int m_scalePixel, m_x, m_y;
+	QRgb *m_data;
+	int m_scalePixel, m_x, m_y, m_w, m_h;
 };
 
 #endif

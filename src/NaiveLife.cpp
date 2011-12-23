@@ -482,7 +482,7 @@ inline void NaiveLife::computeNodeInfo(Node *node, size_t depth)
 	node->flag |= TEST_BIT(dr_flag, RIGHT_ACTIVE);
 }
 
-Block *NaiveLife::newBlock()
+inline Block *NaiveLife::newBlock()
 {
 	Block *ret = newObject<Block>();
 	memset(ret->data, 0, sizeof ret->data);
@@ -491,7 +491,7 @@ Block *NaiveLife::newBlock()
 	return ret;
 }
 
-Node *NaiveLife::newNode(size_t depth)
+inline Node *NaiveLife::newNode(size_t depth)
 {
 	Node *ret = newObject<Node>();
 	ret->ul = ret->ur = ret->dl = ret->dr = emptyNode(depth - 1);
@@ -548,8 +548,9 @@ void NaiveLife::deleteNode(Node *node, size_t depth)
 void NaiveLife::paint(CanvasPainter *painter, const BigInteger &x, const BigInteger &y, int w, int h, size_t scale)
 {
 	m_readLock->lock();
-	// Draw background
-	painter->fillGrid(0, 0, w, h, 0);
+
+	// Fill black background
+	painter->fillBlack();
 
 	// Fit into range
 	BigInteger x1 = x - (m_x >> scale), y1 = y - (m_y >> scale), x2 = x1 + (w - 1), y2 = y1 + (h - 1);
@@ -661,9 +662,7 @@ inline void NaiveLife::drawNode(CanvasPainter *painter, Node *node_ul, Node *nod
 
 void NaiveLife::drawNode(CanvasPainter *painter, Node *node, int x1, int y1, int x2, int y2, size_t depth, size_t scale, int offset_x, int offset_y)
 {
-	if (node == emptyNode(depth))
-		painter->fillGrid(offset_x + x1, offset_y + y1, x2 - x1 + 1, y2 - y1 + 1, 0);
-	else if (depth + scale == BLOCK_DEPTH)
+	if (depth + scale == BLOCK_DEPTH)
 	{
 		if (depth == 0)
 			painter->drawGrid(offset_x + x1, offset_y + y1, reinterpret_cast<Block *>(node)->population > 0);

@@ -23,13 +23,17 @@
 #include "CanvasPainter.h"
 
 CanvasPainter::CanvasPainter(QPaintDevice *device, const BigInteger &view_x, const BigInteger &view_y, int x1, int x2, int y1, int y2, int scale, int scalePixel)
-	: QPainter(device), m_scalePixel(scalePixel), m_x(x1), m_y(y1)
+	: QPainter(device), m_scalePixel(scalePixel), m_x(x1), m_y(y1), m_w(x2 - x1 + 1), m_h(y2 - y1 + 1)
 {
+	m_data = (QRgb *) malloc(m_w * m_h * sizeof(QRgb));
+	// Draw grid
+	AlgorithmManager::algorithm()->paint(this, view_x + x1, view_y + y1, m_w, m_h, scale);
+
 	// Draw background
 	fillRect(0, 0, device->width(), device->height(), QColor(0x80, 0x80, 0x80));
-
-	// Draw grid
-	AlgorithmManager::algorithm()->paint(this, view_x + x1, view_y + y1, x2 - x1 + 1, y2 - y1 + 1, scale);
+	QImage image(reinterpret_cast<uchar *>(m_data), m_w, m_h, QImage::Format_RGB32);
+	drawImage(m_x, m_y, image.scaled(m_w << scalePixel, m_h << scalePixel));
+	free(m_data);
 
 	// Draw grid line
 	if (scalePixel > 1)
@@ -51,16 +55,4 @@ CanvasPainter::CanvasPainter(QPaintDevice *device, const BigInteger &view_x, con
 
 CanvasPainter::~CanvasPainter()
 {
-}
-
-void CanvasPainter::drawGrid(int x, int y, int state)
-{
-	QColor gridColor = state? Qt::white: QColor(0x30, 0x30, 0x30);
-	fillRect((m_x + x) << m_scalePixel, (m_y + y) << m_scalePixel, 1 << m_scalePixel, 1 << m_scalePixel, gridColor);
-}
-
-void CanvasPainter::fillGrid(int x, int y, int w, int h, int state)
-{
-	QColor gridColor = state? Qt::white: QColor(0x30, 0x30, 0x30);
-	fillRect((m_x + x) << m_scalePixel, (m_y + y) << m_scalePixel, (1 << m_scalePixel) * w, (1 << m_scalePixel) * h, gridColor);
 }

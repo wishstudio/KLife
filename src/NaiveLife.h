@@ -58,8 +58,8 @@ private:
 	void expand();
 	inline void computeBlockActiveFlag(Block *block);
 	inline void computeNodeInfo(Node *node, size_t depth);
-	Block *newBlock();
-	Node *newNode(size_t depth);
+	inline Block *newBlock();
+	inline Node *newNode(size_t depth);
 	Node *&emptyNode(size_t depth);
 	void deleteNode(Node *node, size_t depth);
 	inline void drawNode(CanvasPainter *painter, Node *node_ul, Node *node_ur, Node *node_dl, Node *node_dr, int x1, int y1, int x2, int y2, size_t depth, size_t scale, int offset_x, int offset_y);
