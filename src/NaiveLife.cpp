@@ -84,6 +84,183 @@ NaiveLife::~NaiveLife()
 		deleteNode(m_emptyNode[i], i);
 }
 
+void NaiveLife::setReceiveRect(const BigInteger &x, const BigInteger &y, quint64 w, quint64 h)
+{
+	mc_x = x;
+	mc_y = y;
+	mc_w = w;
+	mc_h = h;
+}
+
+void NaiveLife::receive(DataChannel *channel)
+{
+	m_writeLock->lock();
+	m_readLock->lock();
+	// out of range
+	// TODO: optimization
+	BigInteger x1 = mc_x - m_x, y1 = mc_y - m_y, x2 = x1 + BigInteger(mc_w - 1), y2 = y1 + BigInteger(mc_h - 1);
+	while (x1.sgn() < 0 || x2.sgn() < 0 || x2.bitCount() > m_depth || y1.sgn() < 0 || y2.sgn() < 0 || y2.bitCount() > m_depth)
+	{
+		expand();
+		x1 = mc_x - m_x;
+		y1 = mc_y - m_y;
+		x2 = x1 + BigInteger(mc_w - 1);
+		y2 = y1 + BigInteger(mc_h - 1);
+	}
+
+	size_t endDepth = qMax<size_t>(qMax(bitlen(mc_w), bitlen(mc_h)), BLOCK_DEPTH);
+	Node *e = emptyNode(m_depth);
+	receiveGrid(channel, m_root, e, e, e, false, false, false, m_depth, endDepth, x1, y1);
+	m_readLock->unlock();
+	m_writeLock->unlock();
+	emit gridChanged();
+}
+
+void NaiveLife::receiveGrid(DataChannel *channel, Node *&node_ul, Node *&node_ur, Node *&node_dl, Node *&node_dr, bool ok_ur, bool ok_dl, bool ok_dr, size_t depth, size_t endDepth, const BigInteger &x, const BigInteger &y)
+{
+	if (depth == endDepth)
+	{
+		// FIXME the size of return value of lowbits is less than quint64!
+		quint64 sx = x.lowbits(depth), sy = y.lowbits(depth);
+		quint64 x1 = sx, y1 = sy;
+		forever
+		{
+			int state;
+			quint64 cnt;
+			channel->receive(&state, &cnt);
+			if (state == DATACHANNEL_EOF)
+				return;
+			if (state == DATACHANNEL_EOLN)
+			{
+				y1 += cnt;
+				x1 = sx;
+			}
+			else
+			{
+				quint64 c = cnt;
+				if (state)
+					receiveGrid(node_ul, node_ur, node_dl, node_dr, depth, x1, y1, state, cnt);
+				x1 += c;
+			}
+		}
+	}
+	else
+	{
+		Node *e = emptyNode(depth);
+		if (node_ul == e)
+			node_ul = newNode(depth);
+		if (node_ur == e && ok_ur)
+			node_ur = newNode(depth);
+		if (node_dl == e && ok_dl)
+			node_dl = newNode(depth);
+		if (node_dr == e && ok_dr)
+			node_dr = newNode(depth);
+		switch ((y.bit(depth - 1) << 1) | x.bit(depth - 1))
+		{
+		case 0:
+			//  ul ur  0  0
+			//  dl dr  0  0
+			//   0  0  0  0
+			//   0  0  0  0
+			receiveGrid(channel, node_ul->ul, node_ul->ur, node_ul->dl, node_ul->dr, true, true, true, depth - 1, endDepth, x, y);
+			break;
+
+		case 1:
+			//   0 ul ur  0
+			//   0 dl dr  0
+			//   0  0  0  0
+			//   0  0  0  0
+			receiveGrid(channel, node_ul->ur, node_ur->ul, node_ul->dr, node_ur->dl, ok_ur, true, ok_ur, depth - 1, endDepth, x, y);
+			break;
+
+		case 2:
+			//   0  0  0  0
+			//  ul ur  0  0
+			//  dl dr  0  0
+			//   0  0  0  0
+			receiveGrid(channel, node_ul->dl, node_ul->dr, node_dl->ul, node_dl->ur, true, ok_dl, ok_dl, depth - 1, endDepth, x, y);
+			break;
+
+		case 3:
+			//   0  0  0  0
+			//   0 ul ur  0
+			//   0 dl dr  0
+			//   0  0  0  0
+			receiveGrid(channel, node_ul->dr, node_ur->dl, node_dl->ur, node_dr->ul, ok_ur, ok_dl, ok_dr, depth - 1, endDepth, x, y);
+			break;
+		}
+		computeNodeInfo(node_ul, depth);
+		computeNodeInfo(node_ur, depth);
+		computeNodeInfo(node_dl, depth);
+		computeNodeInfo(node_dr, depth);
+	}
+}
+
+void NaiveLife::receiveGrid(Node *&node_ul, Node *&node_ur, Node *&node_dl, Node *&node_dr, size_t depth, quint64 x, quint64 y, int state, quint64 &cnt)
+{
+	quint64 len = Q_UINT64_C(1) << depth;
+	if (y < len)
+	{
+		if (x < len)
+		{
+			receiveGrid(node_ul, depth, x, y, state, cnt);
+			if (!cnt)
+				return;
+			receiveGrid(node_ur, depth, 0, y, state, cnt);
+		}
+		else
+			receiveGrid(node_ur, depth, x - len, y, state, cnt);
+	}
+	else
+	{
+		if (x < len)
+		{
+			receiveGrid(node_dl, depth, x, y - len, state, cnt);
+			if (!cnt)
+				return;
+			receiveGrid(node_dr, depth, 0, y - len, state, cnt);
+		}
+		else
+			receiveGrid(node_dr, depth, x - len, y - len, state, cnt);
+	}
+}
+
+void NaiveLife::receiveGrid(Node *&node, size_t depth, quint64 x, quint64 y, int state, quint64 &cnt)
+{
+	if (depth == BLOCK_DEPTH)
+	{
+		if (node == emptyNode(depth))
+			node = reinterpret_cast<Node *>(newBlock());
+		Block *block = reinterpret_cast<Block *>(node);
+		quint64 d = qMin<quint64>(BLOCK_SIZE - x, cnt);
+		for (unsigned int i = x; i < x + d; i++)
+			if (block->data[y][i] != state)
+			{
+				if (!block->data[y][i])
+					block->population++;
+				block->data[y][i] = state;
+				if (y == 0)
+					SET_BIT(block->flag, UP_CHANGED);
+				if (y == BLOCK_SIZE - 1)
+					SET_BIT(block->flag, DOWN_CHANGED);
+				if (i == 0)
+					SET_BIT(block->flag, LEFT_CHANGED);
+				if (i == BLOCK_SIZE - 1)
+					SET_BIT(block->flag, RIGHT_CHANGED);
+			}
+		SET_BIT(block->flag, CHANGED);
+		computeBlockActiveFlag(block);
+		cnt -= d;
+	}
+	else
+	{
+		if (node == emptyNode(depth))
+			node = newNode(depth);
+		receiveGrid(node->ul, node->ur, node->dl, node->dr, depth - 1, x, y, state, cnt);
+		computeNodeInfo(node, depth);
+	}
+}
+
 int NaiveLife::grid(const BigInteger &x, const BigInteger &y)
 {
 	m_readLock->lock();
@@ -167,90 +344,10 @@ void NaiveLife::setGrid(const BigInteger &x, const BigInteger &y, int state)
 
 void NaiveLife::fillRect(const BigInteger &x, const BigInteger &y, int w, int h, int state)
 {
-//	for (int i = 0; i < w; i++)
-//		for (int j = 0; j < h; j++)
-//			setGrid(x + i, y + j, state);
-	// out of range
-	BigInteger x1 = x - m_x, y1 = y - m_y, x2 = x1 + (w - 1), y2 = y1 + (h - 1);
-	// TODO optimization
-	while (x1.sgn() < 0 || x2.bitCount() > m_depth || y1.sgn() < 0 || y2.bitCount() > m_depth)
-	{
-		expand();
-		x1 = x - m_x;
-		y1 = y - m_y;
-		x2 = x1 + (w - 1);
-		y2 = y1 + (h - 1);
-	}
-
-	// Step 1
-	size_t depth = m_depth;
-	Node **node_ul, **node_ur, **node_dl, **node_dr;
-	Node *rec_ul[m_depth + 1], *rec_ur[m_depth + 1], *rec_dl[m_depth + 1], *rec_dr[m_depth + 1];
-	walkDown(x1, y1, w, h, node_ul, node_ur, node_dl, node_dr, depth, rec_ul, rec_ur, rec_dl, rec_dr, true);
-
-	// Step 2
-	int sx1 = x1.lowbits(depth), sy1 = y1.lowbits(depth);
-	fillRect(*node_ul, *node_ur, *node_dl, *node_dr, sx1, sy1, sx1 + w - 1, sy1 + h - 1, state, depth);
-
-	for (size_t d = depth + 1; d <= m_depth; d++)
-	{
-		computeNodeInfo(rec_ul[d], d);
-		computeNodeInfo(rec_ur[d], d);
-		computeNodeInfo(rec_dl[d], d);
-		computeNodeInfo(rec_dr[d], d);
-	}
-
+	for (int i = 0; i < w; i++)
+		for (int j = 0; j < h; j++)
+			setGrid(x + i, y + j, state);
 	emit gridChanged();
-}
-
-inline void NaiveLife::fillRect(Node *&node_ul, Node *&node_ur, Node *&node_dl, Node *&node_dr, int x1, int y1, int x2, int y2, int state, size_t depth)
-{
-	int len = 1 << depth;
-	if (x1 < len && y1 < len)
-		fillRect(node_ul, x1, y1, qMin(x2, len - 1), qMin(y2, len - 1), state, depth);
-	if (x2 >= len && y1 < len)
-		fillRect(node_ur, qMax(x1 - len, 0), y1, x2 - len, qMin(y2, len - 1), state, depth);
-	if (x1 < len && y2 >= len)
-		fillRect(node_dl, x1, qMax(y1 - len, 0), qMin(x2, len - 1), y2 - len, state, depth);
-	if (x2 >= len && y2 >= len)
-		fillRect(node_dr, qMax(x1 - len, 0), qMax(y1 - len, 0), x2 - len, y2 - len, state, depth);
-}
-
-void NaiveLife::fillRect(Node *&node, int x1, int y1, int x2, int y2, int state, size_t depth)
-{
-	if (depth == BLOCK_DEPTH)
-	{
-		if (node == emptyNode(depth))
-			node = reinterpret_cast<Node *>(newBlock());
-		Block *block = reinterpret_cast<Block *>(node);
-		block->flag |= BIT(CHANGED);
-		for (int x = x1; x <= x2; x++)
-			for (int y = y1; y <= y2; y++)
-				if (block->data[y][x] != state)
-				{
-					if (y == 0)
-						SET_BIT(block->flag, UP_CHANGED);
-					if (y == BLOCK_SIZE - 1)
-						SET_BIT(block->flag, DOWN_CHANGED);
-					if (x == 0)
-						SET_BIT(block->flag, LEFT_CHANGED);
-					if (x == BLOCK_SIZE - 1)
-						SET_BIT(block->flag, RIGHT_CHANGED);
-					if (!block->data[y][x] && state)
-						block->population++;
-					else
-						block->population--;
-					block->data[y][x] = state;
-				}
-		computeBlockActiveFlag(block);
-	}
-	else
-	{
-		if (node == emptyNode(depth))
-			node = newNode(depth);
-		fillRect(node->ul, node->ur, node->dl, node->dr, x1, y1, x2, y2, state, depth - 1);
-		computeNodeInfo(node, depth);
-	}
 }
 
 void NaiveLife::clearGrid()
@@ -282,10 +379,8 @@ BigInteger NaiveLife::population() const
 	return m_root->population;
 }
 
-void NaiveLife::rectChange(const BigInteger &x, const BigInteger &y, const BigInteger &, const BigInteger &)
+void NaiveLife::rectChange(const BigInteger &, const BigInteger &, const BigInteger &, const BigInteger &)
 {
-	m_x = x;
-	m_y = y;
 	emit rectChanged();
 	clearGrid();
 }
@@ -440,7 +535,7 @@ void NaiveLife::deleteNode(Node *node, size_t depth)
 	}
 }
 
-// Magic in walkDOwn() to get rid of BigInteger manipulation:
+// Magic in paint() to get rid of BigInteger manipulation:
 // We walk down and find 4 nodes cover the drawing area
 // We have to guarantee coordinate (x, y) is in node ul during the process.
 // Firstly set ul to root, and other nodes to the magic empty node, like
@@ -450,93 +545,6 @@ void NaiveLife::deleteNode(Node *node, size_t depth)
 // Because 2^(level-1) is larger than w and h so the needed childs of 4 nodes
 // are unique, when depth > endDepth
 // After walkdown(), we can guarantee all the coordinates fit in ints.
-void NaiveLife::walkDown(const BigInteger &x, const BigInteger &y, int w, int h, Node **&node_ul, Node **&node_ur, Node **&node_dl, Node **&node_dr, size_t &depth, Node *rec_ul[], Node *rec_ur[], Node *rec_dl[], Node *rec_dr[], bool record)
-{
-	node_ul = &m_root;
-	node_ur = &emptyNode(m_depth);
-	node_dl = &emptyNode(m_depth);
-	node_dr = &emptyNode(m_depth);
-	size_t realDepth = m_depth;
-	size_t endDepth = qMax(static_cast<size_t>(qMax(bitlen(w), bitlen(h))), BLOCK_DEPTH);
-	bool ok_ur = false, ok_dl = false, ok_dr = false;
-	while (depth > endDepth)
-	{
-		if (record)
-		{
-			Node *e = emptyNode(realDepth);
-			if (*node_ul == e)
-				*node_ul = newNode(realDepth);
-			if (*node_ur == e && ok_ur)
-				*node_ur = newNode(realDepth);
-			if (*node_dl == e && ok_dl)
-				*node_dl = newNode(realDepth);
-			if (*node_dr == e && ok_dr)
-				*node_dr = newNode(realDepth);
-
-			rec_ul[depth] = *node_ul;
-			rec_ur[depth] = *node_ur;
-			rec_dl[depth] = *node_dl;
-			rec_dr[depth] = *node_dr;
-		}
-		switch ((y.bit(depth - 1) << 1) | x.bit(depth - 1))
-		{
-		case 0:
-			//  ul ur  0  0
-			//  dl dr  0  0
-			//   0  0  0  0
-			//   0  0  0  0
-			node_ur = &(*node_ul)->ur;
-			node_dl = &(*node_ul)->dl;
-			node_dr = &(*node_ul)->dr;
-			node_ul = &(*node_ul)->ul;
-
-			ok_ur = ok_dl = ok_dr = true;
-			break;
-
-		case 1:
-			//   0 ul ur  0
-			//   0 dl dr  0
-			//   0  0  0  0
-			//   0  0  0  0
-			node_dl = &(*node_ul)->dr;
-			node_ul = &(*node_ul)->ur;
-			node_dr = &(*node_ur)->dl;
-			node_ur = &(*node_ur)->ul;
-
-			ok_dl = true;
-			ok_dr |= ok_ur;
-			break;
-
-		case 2:
-			//   0  0  0  0
-			//  ul ur  0  0
-			//  dl dr  0  0
-			//   0  0  0  0
-			node_ur = &(*node_ul)->dr;
-			node_ul = &(*node_ul)->dl;
-			node_dr = &(*node_dl)->ur;
-			node_dl = &(*node_dl)->ul;
-
-			ok_ur = true;
-			ok_dr |= ok_dl;
-			break;
-
-		case 3:
-			//   0  0  0  0
-			//   0 ul ur  0
-			//   0 dl dr  0
-			//   0  0  0  0
-			node_ul = &(*node_ul)->dr;
-			node_ur = &(*node_ur)->dl;
-			node_dl = &(*node_dl)->ur;
-			node_dr = &(*node_dr)->ul;
-			break;
-		}
-		depth--;
-		realDepth--;
-	}
-}
-
 void NaiveLife::paint(CanvasPainter *painter, const BigInteger &x, const BigInteger &y, int w, int h, size_t scale)
 {
 	m_readLock->lock();
@@ -578,13 +586,62 @@ void NaiveLife::paint(CanvasPainter *painter, const BigInteger &x, const BigInte
 			h = len - y1;
 
 		// Step 1
-		size_t depth = m_depth - scale;
-		Node **node_ul, **node_ur, **node_dl, **node_dr;
-		walkDown(x1, y1, w, h, node_ul, node_ur, node_dl, node_dr, depth, NULL, NULL, NULL, NULL, false);
+		size_t depth = m_depth - scale, endDepth = qMax<size_t>(qMax(bitlen(w), bitlen(h)), BLOCK_DEPTH);
+		Node *node_ul = m_root, *node_ur = emptyNode(m_depth), *node_dl = emptyNode(m_depth), *node_dr = emptyNode(m_depth);
+		while (depth > endDepth)
+		{
+			switch ((y1.bit(depth - 1) << 1) | x1.bit(depth - 1))
+			{
+			case 0:
+				//  ul ur  0  0
+				//  dl dr  0  0
+				//   0  0  0  0
+				//   0  0  0  0
+				node_ur = node_ul->ur;
+				node_dl = node_ul->dl;
+				node_dr = node_ul->dr;
+				node_ul = node_ul->ul;
+				break;
+
+			case 1:
+				//   0 ul ur  0
+				//   0 dl dr  0
+				//   0  0  0  0
+				//   0  0  0  0
+				node_dl = node_ul->dr;
+				node_ul = node_ul->ur;
+				node_dr = node_ur->dl;
+				node_ur = node_ur->ul;
+				break;
+
+			case 2:
+				//   0  0  0  0
+				//  ul ur  0  0
+				//  dl dr  0  0
+				//   0  0  0  0
+				node_ur = node_ul->dr;
+				node_ul = node_ul->dl;
+				node_dr = node_dl->ur;
+				node_dl = node_dl->ul;
+				break;
+
+			case 3:
+				//   0  0  0  0
+				//   0 ul ur  0
+				//   0 dl dr  0
+				//   0  0  0  0
+				node_ul = node_ul->dr;
+				node_ur = node_ur->dl;
+				node_dl = node_dl->ur;
+				node_dr = node_dr->ul;
+				break;
+			}
+			depth--;
+		}
 
 		// Step 2
 		int sx1 = x1.lowbits(depth), sy1 = y1.lowbits(depth);
-		drawNode(painter, *node_ul, *node_ur, *node_dl, *node_dr, sx1, sy1, sx1 + w - 1, sy1 + h - 1, depth, scale, offset_x - sx1, offset_y - sy1);
+		drawNode(painter, node_ul, node_ur, node_dl, node_dr, sx1, sy1, sx1 + w - 1, sy1 + h - 1, depth, scale, offset_x - sx1, offset_y - sy1);
 	}
 	m_readLock->unlock();
 }

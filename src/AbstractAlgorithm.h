@@ -23,9 +23,10 @@
 #include <QThread>
 
 #include "BigInteger.h"
+#include "DataChannel.h"
 
 class CanvasPainter;
-class AbstractAlgorithm: public QThread
+class AbstractAlgorithm: public QThread, public DataReceiver
 {
 	Q_OBJECT
 

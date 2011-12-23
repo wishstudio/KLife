@@ -19,6 +19,7 @@
 
 #include "AbstractAlgorithm.h"
 #include "BigInteger.h"
+#include "DataChannel.h"
 #include "FileFormatManager.h"
 #include "RLEFormat.h"
 #include "TextStream.h"
@@ -38,9 +39,10 @@ QList<QString> RLEFormat::supportedFormats() const
 
 bool RLEFormat::readDevice(QIODevice *device, AbstractAlgorithm *algorithm)
 {
+	DataChannel *channel = NULL;
 	TextStream S(device);
 	BigInteger x1, y1;
-	int w = 0, h = 0, x = 0, y = 0;
+	int w, h;
 	while (!S.atEnd())
 	{
 		QChar ch;
@@ -64,50 +66,37 @@ bool RLEFormat::readDevice(QIODevice *device, AbstractAlgorithm *algorithm)
 				return false;
 			S >> h;
 			S.skipLine();
-			algorithm->setRect(x1, y1, w, h);
+			algorithm->setReceiveRect(x1, y1, w, h);
+			channel = DataChannel::transferTo(algorithm);
 		}
 		else if (ch == '$')
-		{
-			y++;
-			x = 0;
-		}
+			channel->send(DATACHANNEL_EOLN, 1);
 		else if (ch == '!')
 		{
-			if (x == w && y == h - 1)
-				return true;
-			else
-				return false;
+			channel->send(DATACHANNEL_EOF, 1);
+			return true;
 		}
 		else if (ch == 'o' || ch == 'b')
 		{
-			if (x == w)
-				return false;
 			if (ch == 'o')
-				algorithm->setGrid(x1 + x, y1 + y, 1);
-			x++;
+				channel->send(1, 1);
+			else
+				channel->send(0, 1);
 		}
 		else
 		{
 			S.ungetChar(ch);
 			int cnt;
 			S >> cnt;
-			if (cnt <= 0)
+			if (cnt < 0)
 				return false;
 			S >> ch;
-			if (ch == QChar('o'))
-			{
-				algorithm->fillRect(x1 + x, y1 + y, cnt, 1, 1);
-				x += cnt;
-			}
-			else if (ch == QChar('b'))
-				x += cnt;
-			else if (ch == QChar('$'))
-			{
-				y += cnt;
-				x = 0;
-			}
-			else
-				return false;
+			if (ch == 'o')
+				channel->send(1, cnt);
+			else if (ch == 'b')
+				channel->send(0, cnt);
+			else if (ch == '$')
+				channel->send(DATACHANNEL_EOLN, cnt);
 		}
 	}
 	return false;
