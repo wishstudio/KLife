@@ -22,6 +22,9 @@
 
 #define TEXTSTREAM_BUFFER_SIZE 65536
 
+#include <Qt>
+
+class QIODevice;
 class BigInteger;
 class TextStream
 {

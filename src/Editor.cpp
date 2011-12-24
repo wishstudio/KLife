@@ -245,6 +245,51 @@ void Editor::scaleView(int scaleDelta, size_t anchor_x, size_t anchor_y)
 	}
 }
 
+void Editor::setGrid(int gridx, int gridy, int state, bool previewMode)
+{
+	if (previewMode)
+	{
+	}
+	else
+	{
+		BigInteger x = m_view_x + gridx;
+		BigInteger y = m_view_y + gridy;
+		bool inRange = true;
+		if (!AlgorithmManager::algorithm()->isVerticalInfinity())
+			inRange &= m_rect_x1 <= x && x <= m_rect_x2;
+		if (!AlgorithmManager::algorithm()->isHorizontalInfinity())
+			inRange &= m_rect_y1 <= y && y <= m_rect_y2;
+		if (inRange)
+			AlgorithmManager::algorithm()->setGrid(x, y, state);
+	}
+}
+
+void Editor::setLine(int x1, int y1, int x2, int y2, int state, bool previewMode)
+{
+	// Bresenham's line algorithm
+	// See http://en.wikipedia.org/wiki/Bresenham's_line_algorithm
+	int dx = qAbs(x2 - x1), dy = qAbs(y2 - y1);
+	int sx = x1 < x2? 1: -1, sy = y1 < y2? 1: -1;
+	int err = dx - dy;
+	forever
+	{
+		setGrid(x1, y1, state, previewMode);
+		if (x1 == x2 && y1 == y2)
+			return;
+		int e2 = err * 2;
+		if (e2 > -dy)
+		{
+			err -= dy;
+			x1 += sx;
+		}
+		if (e2 < dx)
+		{
+			err += dx;
+			y1 += sy;
+		}
+	}
+}
+
 bool Editor::eventFilter(QObject *obj, QEvent *event)
 {
 	if (obj == m_canvas)
@@ -281,15 +326,16 @@ bool Editor::eventFilter(QObject *obj, QEvent *event)
 			{
 				if (e->buttons() & Qt::LeftButton)
 				{
-					bool inRange = true;
-					if (!AlgorithmManager::algorithm()->isVerticalInfinity())
-						inRange &= m_rect_x1 <= x && x <= m_rect_x2;
-					if (!AlgorithmManager::algorithm()->isHorizontalInfinity())
-						inRange &= m_rect_y1 <= y && y <= m_rect_y2;
-					if (inRange)
-						AlgorithmManager::algorithm()->setGrid(x, y, 1);
+					// Mouse event is not sent per pixel
+					// Emulate lines to fill the gap
+					if (e->type() == QEvent::MouseButtonPress)
+						setGrid(e->x() >> m_scalePixel, e->y() >> m_scalePixel, 1);
+					else
+						setLine(m_mouseMove_last_x, m_mouseMove_last_y, e->x() >> m_scalePixel, e->y() >> m_scalePixel, 1);
 				}
 			}
+			m_mouseMove_last_x = e->x() >> m_scalePixel;
+			m_mouseMove_last_y = e->y() >> m_scalePixel;
 			emit coordinateChanged(x, y);
 			break;
 		}

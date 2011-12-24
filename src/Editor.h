@@ -50,14 +50,18 @@ private:
 	void resetViewPoint();
 	void viewResized();
 	void scaleView(int scaleDelta, size_t anchor_x, size_t anchor_y);
+	void setGrid(int gridx, int gridy, int state, bool preivewMode = false);
+	void setLine(int x1, int y1, int x2, int y2, int state, bool previewMode = false);
 	bool eventFilter(QObject *obj, QEvent *event);
 
 	QWidget *m_canvas;
 	QScrollBar *m_vertScroll, *m_horiScroll;
 
+	BigInteger m_mouseLastX, m_mouseLastY;
 	BigInteger m_rect_x1, m_rect_y1, m_rect_x2, m_rect_y2, m_rect_w, m_rect_h;
 	BigInteger m_view_x, m_view_y;
 	int m_scroll_last_x, m_scroll_last_y;
+	int m_mouseMove_last_x, m_mouseMove_last_y;
 	int m_vertEdgeSpacing, m_horiEdgeSpacing;
 	int m_vertGridCount, m_horiGridCount;
 	size_t m_scale, m_scalePixel;
