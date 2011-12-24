@@ -21,113 +21,80 @@
 #include "TextStream.h"
 
 TextStream::TextStream(QIODevice *device)
-	: QTextStream(device)
+	: m_atEnd(false), m_success(true), m_size(0), m_pos(0), m_device(device)
 {
+	nextChar();
 }
 
-QChar TextStream::peek()
+bool TextStream::atEnd()
 {
-	if (back.size())
-		return back.top();
-	QChar ret = getChar();
-	ungetChar(ret);
-	return ret;
+	return m_pos > m_size && m_atEnd;
 }
 
-QChar TextStream::getChar()
+inline bool TextStream::isSpace(char ch)
 {
-	if (back.size())
-		return back.pop();
-	QChar ret;
-	*dynamic_cast<QTextStream *>(this) >> ret;
-	return ret;
+	return ch == ' ' || ch == '\t' || ch == '\n';
 }
 
-void TextStream::ungetChar(QChar ch)
+inline void TextStream::nextChar()
 {
-	back.push(ch);
+	if (m_pos == m_size)
+	{
+		if (m_atEnd)
+		{
+			m_char = EOF;
+			return;
+		}
+		m_size = m_device->read(m_buf, TEXTSTREAM_BUFFER_SIZE);
+		m_atEnd = m_device->atEnd();
+		m_pos = 0;
+	}
+	m_char = m_buf[m_pos++];
 }
 
 void TextStream::skipWhiteSpace()
 {
-	if (back.size())
-	{
-		QChar ch = back.pop();
-		while (ch.isSpace() && back.size())
-			ch = back.pop();
-		if (!ch.isSpace())
-		{
-			ungetChar(ch);
-			return;
-		}
-	}
-	QTextStream::skipWhiteSpace();
+	while (isSpace(m_char))
+		nextChar();
 }
 
 void TextStream::skipLine()
 {
-	while (getChar() != QChar('\n'));
+	while (m_char != '\n')
+		nextChar();
 }
 
-TextStream& TextStream::operator >> (QChar &ch)
+TextStream& TextStream::operator >> (char &ch)
 {
 	skipWhiteSpace();
-	ch = getChar();
-	return *this;
-}
-
-TextStream& TextStream::operator >> (QString &str)
-{
-	skipWhiteSpace();
-	str.clear();
-	QChar ch;
-	while (!(ch = getChar()).isSpace())
-		str.append(ch);
-	ungetChar(ch);
-	return *this;
-}
-
-TextStream& TextStream::operator >> (BigInteger &num)
-{
-	skipWhiteSpace();
-	QString str;
-	QChar ch = getChar();
-	if (ch == QTextStream::locale().negativeSign() || ch == QTextStream::locale().positiveSign())
-	{
-		ch = getChar();
-		str.append(ch);
-	}
-	while (ch.isDigit())
-	{
-		str.append(ch.digitValue());
-		ch = getChar();
-	}
-	ungetChar(ch);
-	if (!str.size() || !str[0].isDigit())
-		num = 0;
-	else
-		num = str;
+	ch = m_char;
+	nextChar();
+	m_success = true;
 	return *this;
 }
 
 TextStream& TextStream::operator >> (int &num)
 {
 	skipWhiteSpace();
-	QChar ch = getChar();
 	num = 0;
 	bool neg = false;
-	if (ch == QTextStream::locale().negativeSign() || ch == QTextStream::locale().positiveSign())
+	if (m_char == '+' || m_char == '-')
 	{
-		neg = true;
-		ch = getChar();
+		neg = m_char == '-';
+		nextChar();
 	}
-	while (ch.isDigit())
+	if (m_char < '0' || m_char > '9')
 	{
-		num = num * 10 + ch.digitValue();
-		ch = getChar();
+		m_success = false;
+		return *this;
 	}
-	ungetChar(ch);
+	while (m_char >= '0' && m_char <= '9')
+	{
+		num = num * 10 + m_char - '0';
+		nextChar();
+	}
 	if (neg)
 		num = -num;
+	m_success = true;
 	return *this;
 }

@@ -45,49 +45,11 @@ bool RLEFormat::readDevice(QIODevice *device, AbstractAlgorithm *algorithm)
 	int w, h;
 	while (!S.atEnd())
 	{
-		QChar ch;
-		S >> ch;
-		if (ch == QChar('#'))
-			S.skipLine();
-		else if (ch == 'x' || ch == 'X')
+		char ch;
+		// TODO: Should be quint64!
+		int cnt;
+		if (S >> cnt)
 		{
-			S >> ch;
-			if (ch != '=')
-				return false;
-			S >> w;
-			S >> ch;
-			if (ch != ',')
-				return false;
-			S >> ch;
-			if (ch != 'y' && ch != 'Y')
-				return false;
-			S >> ch;
-			if (ch != '=')
-				return false;
-			S >> h;
-			S.skipLine();
-			algorithm->setReceiveRect(x1, y1, w, h);
-			channel = DataChannel::transferTo(algorithm);
-		}
-		else if (ch == '$')
-			channel->send(DATACHANNEL_EOLN, 1);
-		else if (ch == '!')
-		{
-			channel->send(DATACHANNEL_EOF, 1);
-			return true;
-		}
-		else if (ch == 'o' || ch == 'b')
-		{
-			if (ch == 'o')
-				channel->send(1, 1);
-			else
-				channel->send(0, 1);
-		}
-		else
-		{
-			S.ungetChar(ch);
-			int cnt;
-			S >> cnt;
 			if (cnt < 0)
 				return false;
 			S >> ch;
@@ -97,6 +59,43 @@ bool RLEFormat::readDevice(QIODevice *device, AbstractAlgorithm *algorithm)
 				channel->send(0, cnt);
 			else if (ch == '$')
 				channel->send(DATACHANNEL_EOLN, cnt);
+		}
+		else
+		{
+			S >> ch;
+			if (ch == '#')
+				S.skipLine();
+			else if (ch == 'x' || ch == 'X')
+			{
+				S >> ch;
+				if (ch != '=')
+					return false;
+				S >> w;
+				S >> ch;
+				if (ch != ',')
+					return false;
+				S >> ch;
+				if (ch != 'y' && ch != 'Y')
+					return false;
+				S >> ch;
+				if (ch != '=')
+					return false;
+				S >> h;
+				S.skipLine();
+				algorithm->setReceiveRect(x1, y1, w, h);
+				channel = DataChannel::transferTo(algorithm);
+			}
+			else if (ch == '$')
+				channel->send(DATACHANNEL_EOLN, 1);
+			else if (ch == '!')
+			{
+				channel->send(DATACHANNEL_EOF, 1);
+				return true;
+			}
+			else if (ch == 'o')
+				channel->send(1, 1);
+			else if (ch == 'b')
+				channel->send(0, 1);
 		}
 	}
 	return false;

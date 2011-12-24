@@ -67,5 +67,7 @@ bool FileFormatManager::readFile(QString fileName)
 	if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
 		return false;
 	AlgorithmManager::algorithm()->clearGrid();
-	return format->readDevice(&file, AlgorithmManager::algorithm());
+	bool ret = format->readDevice(&file, AlgorithmManager::algorithm());
+	file.close();
+	return ret;
 }

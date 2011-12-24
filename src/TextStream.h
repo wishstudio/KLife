@@ -20,29 +20,32 @@
 #ifndef TEXTSTREAM_H
 #define TEXTSTREAM_H
 
-#include <QStack>
-#include <QTextStream>
+#define TEXTSTREAM_BUFFER_SIZE 65536
 
 class BigInteger;
-class TextStream: private QTextStream
+class TextStream
 {
 public:
 	TextStream(QIODevice *device);
 
-	bool atEnd() { return QTextStream::atEnd(); }
-	QChar peek();
-	QChar getChar();
-	void ungetChar(QChar ch);
+	bool atEnd();
+	char getChar();
 	void skipWhiteSpace();
 	void skipLine();
 
-	TextStream& operator >> (QChar &ch);
-	TextStream& operator >> (QString &str);
-	TextStream& operator >> (BigInteger &num);
+	operator bool() const { return m_success; }
+
+	TextStream& operator >> (char &ch);
 	TextStream& operator >> (int &num);
 
 private:
-	QStack<QChar> back;
+	inline bool isSpace(char ch);
+	inline void nextChar();
+
+	bool m_atEnd, m_success;
+	char m_buf[TEXTSTREAM_BUFFER_SIZE], m_char;
+	quint64 m_size, m_pos;
+	QIODevice *m_device;
 };
 
 #endif

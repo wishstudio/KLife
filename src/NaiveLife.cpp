@@ -123,25 +123,27 @@ void NaiveLife::receiveGrid(DataChannel *channel, Node *&node_ul, Node *&node_ur
 		// FIXME the size of return value of lowbits is less than quint64!
 		quint64 sx = x.lowbits(depth), sy = y.lowbits(depth);
 		quint64 x1 = sx, y1 = sy;
+		int state;
+		quint64 cnt;
+		channel->receive(&state, &cnt);
+		while (state == DATACHANNEL_EOLN)
+		{
+			y1 += cnt;
+			channel->receive(&state, &cnt);
+		}
+		if (state == DATACHANNEL_EOF)
+			return;
 		forever
 		{
-			int state;
-			quint64 cnt;
-			channel->receive(&state, &cnt);
-			if (state == DATACHANNEL_EOF)
-				return;
-			if (state == DATACHANNEL_EOLN)
+			receiveGrid(channel, node_ul, node_ur, node_dl, node_dr, depth, x1, y1, state, cnt);
+			while (state == DATACHANNEL_EOLN)
 			{
 				y1 += cnt;
 				x1 = sx;
+				channel->receive(&state, &cnt);
 			}
-			else
-			{
-				quint64 c = cnt;
-				if (state)
-					receiveGrid(node_ul, node_ur, node_dl, node_dr, depth, x1, y1, state, cnt);
-				x1 += c;
-			}
+			if (state == DATACHANNEL_EOF)
+				return;
 		}
 	}
 	else
@@ -196,68 +198,93 @@ void NaiveLife::receiveGrid(DataChannel *channel, Node *&node_ul, Node *&node_ur
 	}
 }
 
-void NaiveLife::receiveGrid(Node *&node_ul, Node *&node_ur, Node *&node_dl, Node *&node_dr, size_t depth, quint64 x, quint64 y, int state, quint64 &cnt)
+inline void NaiveLife::receiveGrid(DataChannel *channel, Node *&node_ul, Node *&node_ur, Node *&node_dl, Node *&node_dr, size_t depth, quint64 x, quint64 y, int &state, quint64 &cnt)
 {
 	quint64 len = Q_UINT64_C(1) << depth;
 	if (y < len)
 	{
 		if (x < len)
 		{
-			receiveGrid(node_ul, depth, x, y, state, cnt);
-			if (!cnt)
-				return;
-			receiveGrid(node_ur, depth, 0, y, state, cnt);
+			receiveGrid(channel, node_ul, depth, x, y, state, cnt);
+			if (state >= 0)
+				receiveGrid(channel, node_ur, depth, 0, y, state, cnt);
 		}
 		else
-			receiveGrid(node_ur, depth, x - len, y, state, cnt);
+			receiveGrid(channel, node_ur, depth, x - len, y, state, cnt);
 	}
 	else
 	{
 		if (x < len)
 		{
-			receiveGrid(node_dl, depth, x, y - len, state, cnt);
-			if (!cnt)
-				return;
-			receiveGrid(node_dr, depth, 0, y - len, state, cnt);
+			receiveGrid(channel, node_dl, depth, x, y - len, state, cnt);
+			if (state >= 0)
+				receiveGrid(channel, node_dr, depth, 0, y - len, state, cnt);
 		}
 		else
-			receiveGrid(node_dr, depth, x - len, y - len, state, cnt);
+			receiveGrid(channel, node_dr, depth, x - len, y - len, state, cnt);
 	}
 }
 
-void NaiveLife::receiveGrid(Node *&node, size_t depth, quint64 x, quint64 y, int state, quint64 &cnt)
+void NaiveLife::receiveGrid(DataChannel *channel, Node *&node, size_t depth, quint64 x, quint64 y, int &state, quint64 &cnt)
 {
 	if (depth == BLOCK_DEPTH)
 	{
-		if (node == emptyNode(depth))
-			node = reinterpret_cast<Node *>(newBlock());
-		Block *block = reinterpret_cast<Block *>(node);
-		quint64 d = qMin<quint64>(BLOCK_SIZE - x, cnt);
-		for (unsigned int i = x; i < x + d; i++)
-			if (block->data[y][i] != state)
+		bool changed = false;
+		do
+		{
+			quint64 d = qMin<quint64>(BLOCK_SIZE - x, cnt);
+			if (state)
 			{
-				if (!block->data[y][i])
-					block->population++;
-				block->data[y][i] = state;
-				if (y == 0)
-					SET_BIT(block->flag, UP_CHANGED);
-				if (y == BLOCK_SIZE - 1)
-					SET_BIT(block->flag, DOWN_CHANGED);
-				if (i == 0)
-					SET_BIT(block->flag, LEFT_CHANGED);
-				if (i == BLOCK_SIZE - 1)
-					SET_BIT(block->flag, RIGHT_CHANGED);
+				if (node == emptyNode(depth))
+					node = reinterpret_cast<Node *>(newBlock());
+				Block *block = reinterpret_cast<Block *>(node);
+				for (unsigned int i = x; i < x + d; i++)
+					if (block->data[y][i] != state)
+					{
+						if (!block->data[y][i])
+							block->population++;
+						else
+							block->population--;
+						block->data[y][i] = state;
+						if (y == 0)
+							SET_BIT(block->flag, UP_CHANGED);
+						if (y == BLOCK_SIZE - 1)
+							SET_BIT(block->flag, DOWN_CHANGED);
+						if (i == 0)
+							SET_BIT(block->flag, LEFT_CHANGED);
+						if (i == BLOCK_SIZE - 1)
+							SET_BIT(block->flag, RIGHT_CHANGED);
+					}
+				SET_BIT(block->flag, CHANGED);
+				changed = true;
 			}
-		SET_BIT(block->flag, CHANGED);
-		computeBlockActiveFlag(block);
-		cnt -= d;
+			cnt -= d;
+			if (!cnt)
+				channel->receive(&state, &cnt);
+			x += d;
+		}
+		while (x < BLOCK_SIZE && state >= 0);
+		if (changed)
+			computeBlockActiveFlag(reinterpret_cast<Block *>(node));
 	}
 	else
 	{
-		if (node == emptyNode(depth))
-			node = newNode(depth);
-		receiveGrid(node->ul, node->ur, node->dl, node->dr, depth - 1, x, y, state, cnt);
-		computeNodeInfo(node, depth);
+		quint64 len = Q_UINT64_C(1) << depth;
+		while (x < len && state == 0)
+		{
+			quint64 d = qMin(len - x, cnt);
+			cnt -= d;
+			if (!cnt)
+				channel->receive(&state, &cnt);
+			x += d;
+		}
+		if (x < len && state > 0)
+		{
+			if (node == emptyNode(depth))
+				node = newNode(depth);
+			receiveGrid(channel, node->ul, node->ur, node->dl, node->dr, depth - 1, x, y, state, cnt);
+			computeNodeInfo(node, depth);
+		}
 	}
 }
 
