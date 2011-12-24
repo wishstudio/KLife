@@ -166,11 +166,6 @@ void BigInteger::setBit(size_t id)
 	mpz_setbit(data, (mp_bitcnt_t) id);
 }
 
-int BigInteger::lowbits(size_t count) const
-{
-	return mpz_getlimbn(data, 0) & ((1 << count) - 1);
-}
-
 BigInteger BigInteger::operator + (const BigInteger &num) const
 {
 	BigInteger ret;

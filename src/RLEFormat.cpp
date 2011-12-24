@@ -46,12 +46,9 @@ bool RLEFormat::readDevice(QIODevice *device, AbstractAlgorithm *algorithm)
 	while (!S.atEnd())
 	{
 		char ch;
-		// TODO: Should be quint64!
-		int cnt;
+		quint64 cnt;
 		if (S >> cnt)
 		{
-			if (cnt < 0)
-				return false;
 			S >> ch;
 			if (ch == 'o')
 				channel->send(1, cnt);
@@ -96,6 +93,8 @@ bool RLEFormat::readDevice(QIODevice *device, AbstractAlgorithm *algorithm)
 				channel->send(1, 1);
 			else if (ch == 'b')
 				channel->send(0, 1);
+			else
+				return false;
 		}
 	}
 	return false;

@@ -40,6 +40,7 @@ public:
 
 	TextStream& operator >> (char &ch);
 	TextStream& operator >> (int &num);
+	TextStream& operator >> (quint64 &num);
 
 private:
 	inline bool isSpace(char ch);

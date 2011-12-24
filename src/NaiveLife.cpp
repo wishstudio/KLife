@@ -120,8 +120,7 @@ void NaiveLife::receiveGrid(DataChannel *channel, Node *&node_ul, Node *&node_ur
 {
 	if (depth == endDepth)
 	{
-		// FIXME the size of return value of lowbits is less than quint64!
-		quint64 sx = x.lowbits(depth), sy = y.lowbits(depth);
+		quint64 sx = x.lowbits<quint64>(depth), sy = y.lowbits<quint64>(depth);
 		quint64 x1 = sx, y1 = sy;
 		int state;
 		quint64 cnt;
@@ -311,7 +310,7 @@ int NaiveLife::grid(const BigInteger &x, const BigInteger &y)
 	if (p == NULL)
 		ret = 0;
 	else
-		ret = reinterpret_cast<Block *>(p)->data[my_y.lowbits(BLOCK_DEPTH)][my_x.lowbits(BLOCK_DEPTH)];
+		ret = reinterpret_cast<Block *>(p)->data[my_y.lowbits<int>(BLOCK_DEPTH)][my_x.lowbits<int>(BLOCK_DEPTH)];
 	m_readLock->unlock();
 	return ret;
 }
@@ -347,7 +346,7 @@ void NaiveLife::setGrid(const BigInteger &x, const BigInteger &y, int state)
 		p = p->child[cid];
 	}
 	Block *block = reinterpret_cast<Block *>(p);
-	int sx = my_x.lowbits(BLOCK_DEPTH), sy = my_y.lowbits(BLOCK_DEPTH);
+	int sx = my_x.lowbits<int>(BLOCK_DEPTH), sy = my_y.lowbits<int>(BLOCK_DEPTH);
 	if (block->data[sy][sx] && !state)
 		block->population--;
 	else if (!block->data[sy][sx] && state)
@@ -668,7 +667,7 @@ void NaiveLife::paint(CanvasPainter *painter, const BigInteger &x, const BigInte
 		}
 
 		// Step 2
-		int sx1 = x1.lowbits(depth), sy1 = y1.lowbits(depth);
+		int sx1 = x1.lowbits<int>(depth), sy1 = y1.lowbits<int>(depth);
 		drawNode(painter, node_ul, node_ur, node_dl, node_dr, sx1, sy1, sx1 + w - 1, sy1 + h - 1, depth, scale, offset_x - sx1, offset_y - sy1);
 	}
 	m_readLock->unlock();

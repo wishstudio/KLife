@@ -98,3 +98,21 @@ TextStream& TextStream::operator >> (int &num)
 	m_success = true;
 	return *this;
 }
+
+TextStream& TextStream::operator >> (quint64 &num)
+{
+	skipWhiteSpace();
+	num = 0;
+	if (m_char < '0' || m_char > '9')
+	{
+		m_success = false;
+		return *this;
+	}
+	while (m_char >= '0' && m_char <= '9')
+	{
+		num = num * 10 + m_char - '0';
+		nextChar();
+	}
+	m_success = true;
+	return *this;
+}

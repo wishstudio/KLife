@@ -52,7 +52,19 @@ public:
 	size_t bitCount() const;
 	int bit(size_t id) const;
 	void setBit(size_t id);
-	int lowbits(size_t count) const;
+	template <typename T>
+	inline T lowbits(size_t count) const
+	{
+		T ret = 0;
+		int c = 0, n = 0;
+		while (count > GMP_LIMB_BITS)
+		{
+			ret |= mpz_getlimbn(data, n++) << c;
+			count -= GMP_LIMB_BITS;
+			c += GMP_LIMB_BITS;
+		}
+		return ret | ((mpz_getlimbn(data, n) & ((1 << count) - 1)) << c);
+	}
 
 	BigInteger operator + (const BigInteger &num) const;
 	BigInteger operator + (int num) const;
