@@ -151,24 +151,24 @@ void Editor::scrollChanged(int)
 				if (m_scroll_last_y)
 					m_scroll_last_y = 0;
 				else
-					m_view_y += scrollBar->sliderPosition();
+					m_view_y += BigInteger(scrollBar->sliderPosition()) << (maxScalePixel - m_scalePixel);
 			else
 				if (m_scroll_last_x)
 					m_scroll_last_x = 0;
 				else
-					m_view_x += scrollBar->sliderPosition();
+					m_view_x += BigInteger(scrollBar->sliderPosition()) << (maxScalePixel - m_scalePixel);
 			scrollBar->setSliderPosition(0);
 		}
 		else
 		{
 			if (scrollBar->orientation() == Qt::Vertical)
 			{
-				m_view_y -= m_scroll_last_y - scrollBar->sliderPosition();
+				m_view_y -= BigInteger(m_scroll_last_y - scrollBar->sliderPosition()) << (maxScalePixel - m_scalePixel);
 				m_scroll_last_y = scrollBar->sliderPosition();
 			}
 			else
 			{
-				m_view_x -= m_scroll_last_x - scrollBar->sliderPosition();
+				m_view_x -= BigInteger(m_scroll_last_x - scrollBar->sliderPosition()) << (maxScalePixel - m_scalePixel);
 				m_scroll_last_x = scrollBar->sliderPosition();
 			}
 		}
@@ -220,13 +220,13 @@ void Editor::scaleView(int scaleDelta, size_t anchor_x, size_t anchor_y)
 		size_t old_scale = m_scale, old_scalePixel = m_scalePixel;
 		if (scaleDelta > 0)
 		{
-			size_t d = qMin(m_scale, static_cast<size_t>(scaleDelta));
+			size_t d = qMin<size_t>(m_scale, scaleDelta);
 			m_scale -= d;
 			m_scalePixel = qMin(maxScalePixel, m_scalePixel + scaleDelta - d);
 		}
 		else
 		{
-			size_t d = qMin(m_scalePixel, static_cast<size_t>(-scaleDelta));
+			size_t d = qMin<size_t>(m_scalePixel, -scaleDelta);
 			m_scalePixel -= d;
 			m_scale += -scaleDelta - d;
 		}
