@@ -23,12 +23,18 @@
 #include <QRgb>
 #include <QPainter>
 
-class BigInteger;
+#include "BigInteger.h"
+
 class CanvasPainter: public QPainter
 {
 public:
 	CanvasPainter(QPaintDevice *device, const BigInteger &view_x, const BigInteger &view_y, int x1, int x2, int y1, int y2, int scale, int scalePixel);
 	virtual ~CanvasPainter();
+
+	inline int width() const { return m_w; }
+	inline int height() const { return m_h; }
+	void drawPattern();
+	void drawGridLine();
 
 	// This function is very time consuming
 	// So trying inline for some speed improvement
@@ -44,7 +50,8 @@ public:
 
 private:
 	QRgb *m_data;
-	int m_scalePixel, m_x, m_y, m_w, m_h;
+	BigInteger m_view_x, m_view_y;
+	int m_scalePixel, m_x1, m_x2, m_y1, m_y2, m_w, m_h;
 };
 
 #endif

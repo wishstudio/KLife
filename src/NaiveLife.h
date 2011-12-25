@@ -43,7 +43,6 @@ public:
 	virtual void receive(DataChannel *channel);
 	virtual int grid(const BigInteger &x, const BigInteger &y);
 	virtual void setGrid(const BigInteger &x, const BigInteger &y, int state);
-	virtual void fillRect(const BigInteger &x, const BigInteger &y, int w, int h, int state);
 	virtual void clearGrid();
 	virtual BigInteger generation() const;
 	virtual BigInteger population() const;

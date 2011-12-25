@@ -368,14 +368,6 @@ void NaiveLife::setGrid(const BigInteger &x, const BigInteger &y, int state)
 	emit gridChanged();
 }
 
-void NaiveLife::fillRect(const BigInteger &x, const BigInteger &y, int w, int h, int state)
-{
-	for (int i = 0; i < w; i++)
-		for (int j = 0; j < h; j++)
-			setGrid(x + i, y + j, state);
-	emit gridChanged();
-}
-
 void NaiveLife::clearGrid()
 {
 	m_writeLock->lock();

@@ -107,7 +107,7 @@ void MainWindow::openAction()
 void MainWindow::setupActions()
 {
 	KAction *newAction = new KAction(this);
-	newAction->setText(i18n("&New..."));
+	newAction->setText(i18n("&New pattern..."));
 	newAction->setIcon(KIcon("document-new"));
 	newAction->setShortcut(Qt::CTRL + Qt::Key_N);
 	actionCollection()->addAction("new", newAction);

@@ -17,6 +17,7 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+#include <QActionGroup>
 #include <QApplication>
 #include <QEvent>
 #include <QGridLayout>
@@ -28,11 +29,13 @@
 #include <KAction>
 #include <KActionCollection>
 #include <KIcon>
+#include <KLocale>
 #include <KXmlGuiWindow>
 
 #include "AbstractAlgorithm.h"
 #include "AlgorithmManager.h"
 #include "CanvasPainter.h"
+#include "DataChannel.h"
 #include "Editor.h"
 
 static const size_t maxScalePixel = 4;
@@ -42,17 +45,62 @@ static const size_t maxScalePixel = 4;
 Editor::Editor(QWidget *parent)
 	: QWidget(parent), m_rect_x1(0), m_rect_y1(0), m_rect_x2(0), m_rect_y2(0), m_view_x(0), m_view_y(0),
 	  m_scroll_last_x(0), m_scroll_last_y(0),
+	  m_drawing(false), m_editMode(DrawFreehand),
 	  m_scale(0), m_scalePixel(maxScalePixel)
 {
 	QToolBar *toolbar = new QToolBar();
 	KAction *stepAction = new KAction(this);
-	stepAction->setText("Step");
+	stepAction->setText(i18n("Run a single step"));
 	stepAction->setIcon(KIcon("arrow-right"));
 	stepAction->setToolTip("Run a single step");
 	stepAction->setShortcut(Qt::Key_Space);
 	static_cast<KXmlGuiWindow *>(parent)->actionCollection()->addAction("step", stepAction);
 	connect(stepAction, SIGNAL(triggered()), AlgorithmManager::self(), SLOT(runStep()));
 	toolbar->addAction(stepAction);
+
+	toolbar->addSeparator();
+
+	QActionGroup *editTools = new QActionGroup(this);
+	KAction *freehandAction = new KAction(this);
+	freehandAction->setText(i18n("Draw freehand"));
+	freehandAction->setIcon(KIcon("draw-brush"));
+	freehandAction->setToolTip(i18n("Draw freehand"));
+	freehandAction->setCheckable(true);
+	freehandAction->setChecked(true);
+	static_cast<KXmlGuiWindow *>(parent)->actionCollection()->addAction("draw-freehand", freehandAction);
+	connect(freehandAction, SIGNAL(triggered()), this, SLOT(freehandAction()));
+	editTools->addAction(freehandAction);
+	toolbar->addAction(freehandAction);
+
+	KAction *lineAction = new KAction(this);
+	lineAction->setText(i18n("Draw line"));
+	lineAction->setIcon(KIcon("draw-line"));
+	lineAction->setToolTip(i18n("Draw line"));
+	lineAction->setCheckable(true);
+	static_cast<KXmlGuiWindow *>(parent)->actionCollection()->addAction("draw-line", lineAction);
+	connect(lineAction, SIGNAL(triggered()), this, SLOT(lineAction()));
+	editTools->addAction(lineAction);
+	toolbar->addAction(lineAction);
+
+	KAction *rectangleAction = new KAction(this);
+	rectangleAction->setText(i18n("Draw rectangle"));
+	rectangleAction->setIcon(KIcon("draw-rectangle"));
+	rectangleAction->setToolTip(i18n("Draw rectangle"));
+	rectangleAction->setCheckable(true);
+	static_cast<KXmlGuiWindow *>(parent)->actionCollection()->addAction("draw-rectangle", rectangleAction);
+	connect(rectangleAction, SIGNAL(triggered()), this, SLOT(rectangleAction()));
+	editTools->addAction(rectangleAction);
+	toolbar->addAction(rectangleAction);
+
+	KAction *circleAction = new KAction(this);
+	circleAction->setText(i18n("Draw circle"));
+	circleAction->setIcon(KIcon("draw-circle"));
+	circleAction->setToolTip(i18n("Draw circle"));
+	circleAction->setCheckable(true);
+	static_cast<KXmlGuiWindow *>(parent)->actionCollection()->addAction("draw-circle", circleAction);
+	connect(circleAction, SIGNAL(triggered()), this, SLOT(circleAction()));
+	editTools->addAction(circleAction);
+	toolbar->addAction(circleAction);
 
 	m_canvas = new QWidget();
 	m_canvas->setMouseTracking(true);
@@ -84,6 +132,26 @@ Editor::Editor(QWidget *parent)
 Editor::~Editor()
 {
 	delete m_canvas;
+}
+
+void Editor::freehandAction()
+{
+	m_editMode = DrawFreehand;
+}
+
+void Editor::lineAction()
+{
+	m_editMode = DrawLine;
+}
+
+void Editor::rectangleAction()
+{
+	m_editMode = DrawRectangle;
+}
+
+void Editor::circleAction()
+{
+	m_editMode = DrawCircle;
 }
 
 void Editor::rectChanged()
@@ -245,10 +313,12 @@ void Editor::scaleView(int scaleDelta, size_t anchor_x, size_t anchor_y)
 	}
 }
 
-void Editor::setGrid(int gridx, int gridy, int state, bool previewMode)
+void Editor::setGrid(int gridx, int gridy, int state, CanvasPainter *painter)
 {
-	if (previewMode)
+	if (painter) // preview mode
 	{
+		if (gridx >= 0 && gridx < painter->width() && gridy >= 0 && gridy < painter->height())
+			painter->drawGrid(gridx, gridy, state);
 	}
 	else
 	{
@@ -264,7 +334,7 @@ void Editor::setGrid(int gridx, int gridy, int state, bool previewMode)
 	}
 }
 
-void Editor::setLine(int x1, int y1, int x2, int y2, int state, bool previewMode)
+void Editor::setLine(int x1, int y1, int x2, int y2, int state, CanvasPainter *painter)
 {
 	// Bresenham's line algorithm
 	// See http://en.wikipedia.org/wiki/Bresenham's_line_algorithm
@@ -273,7 +343,7 @@ void Editor::setLine(int x1, int y1, int x2, int y2, int state, bool previewMode
 	int err = dx - dy;
 	forever
 	{
-		setGrid(x1, y1, state, previewMode);
+		setGrid(x1, y1, state, painter);
 		if (x1 == x2 && y1 == y2)
 			return;
 		int e2 = err * 2;
@@ -286,6 +356,98 @@ void Editor::setLine(int x1, int y1, int x2, int y2, int state, bool previewMode
 		{
 			err += dx;
 			y1 += sy;
+		}
+	}
+}
+
+void Editor::setRectangle(int x1, int y1, int x2, int y2, int state, CanvasPainter *painter)
+{
+	if (x2 < x1)
+		qSwap(x1, x2);
+	if (y2 < y1)
+		qSwap(y1, y2);
+	if (painter)
+	{
+		x1 = qMax(0, x1);
+		y1 = qMax(0, y1);
+		x2 = qMin(painter->width(), x2);
+		y2 = qMin(painter->height(), y2);
+		for (int x = x1; x <= x2; x++)
+		{
+			painter->drawGrid(x, y1, state);
+			painter->drawGrid(x, y2, state);
+		}
+		for (int y = y1 + 1; y <= y2 - 1; y++)
+		{
+			painter->drawGrid(x1, y, state);
+			painter->drawGrid(x2, y, state);
+		}
+	}
+	else
+	{
+		AlgorithmManager::algorithm()->setReceiveRect((m_view_x + x1) << m_scale, (m_view_y + y1) << m_scale, x2 - x1 + 1, y2 - y1 + 1);
+		DataChannel *channel = DataChannel::transferTo(AlgorithmManager::algorithm());
+		channel->send(state, x2 - x1 + 1);
+		channel->send(DATACHANNEL_EOLN, 1);
+		for (int y = y1 + 1; y <= y2 - 1; y++)
+		{
+			channel->send(state, 1);
+			channel->send(0, x2 - x1 - 1);
+			channel->send(state, 1);
+			channel->send(DATACHANNEL_EOLN, 1);
+		}
+		channel->send(state, x2 - x1 + 1);
+		channel->send(DATACHANNEL_EOF, 1);
+	}
+}
+
+void Editor::setCircle(int x1, int y1, int x2, int y2, int state, CanvasPainter *painter)
+{
+	// Bresenham's circle algorithm
+	// See http://en.wikipedia.org/wiki/Bresenham's_circle_algorithm
+	int d = qMin(qAbs(x1 - x2), qAbs(y1 - y2)), r = d / 2;
+	int cx, cy, xp = 0, xn = 0, yp = 0, yn = 0;
+	if (x1 < x2)
+	{
+		cx = x1 + r;
+		xp = d % 2;
+	}
+	else
+	{
+		cx = x1 - r;
+		xn = d % 2;
+	}
+	if (y1 < y2)
+	{
+		cy = y1 + r;
+		yp = d % 2;
+	}
+	else
+	{
+		cy = y1 - r;
+		yn = d % 2;
+	}
+	int x = r, y = 0, err = -r;
+	while (x >= y)
+	{
+		setGrid(cx - x - xn, cy - y - yn, state, painter);
+		setGrid(cx - y - xn, cy - x - yn, state, painter);
+		setGrid(cx + y + xp, cy - x - yn, state, painter);
+		setGrid(cx + x + xp, cy - y - yn, state, painter);
+		setGrid(cx - x - xn, cy + y + yp, state, painter);
+		setGrid(cx - y - xn, cy + x + yp, state, painter);
+		setGrid(cx + y + xp, cy + x + yp, state, painter);
+		setGrid(cx + x + xp, cy + y + yp, state, painter);
+
+		err += y;
+		y++;
+		err += y;
+
+		if (err >= 0)
+		{
+			err -= x;
+			--x;
+			err -= x;
 		}
 	}
 }
@@ -303,40 +465,82 @@ bool Editor::eventFilter(QObject *obj, QEvent *event)
 			int y1 = 0, y2 = m_vertGridCount;
 			if (!AlgorithmManager::algorithm()->isVerticalInfinity())
 			{
-				y1 = qMax(y1, (int) ((m_rect_y1 >> scale) - m_view_y));
-				y2 = qMin(y2, (int) ((m_rect_y2 >> scale) - m_view_y));
+				y1 = qMax(y1, static_cast<int>((m_rect_y1 >> scale) - m_view_y));
+				y2 = qMin(y2, static_cast<int>((m_rect_y2 >> scale) - m_view_y));
 			}
 			int x1 = 0, x2 = m_horiGridCount;
 			if (!AlgorithmManager::algorithm()->isHorizontalInfinity())
 			{
-				x1 = qMax(x1, (int) ((m_rect_x1 >> scale) - m_view_x));
-				x2 = qMin(x2, (int) ((m_rect_x2 >> scale) - m_view_x));
+				x1 = qMax(x1, static_cast<int>((m_rect_x1 >> scale) - m_view_x));
+				x2 = qMin(x2, static_cast<int>((m_rect_x2 >> scale) - m_view_x));
 			}
 			CanvasPainter painter(m_canvas, m_view_x, m_view_y, x1, x2, y1, y2, qMax(m_scale, 0UL), m_scalePixel);
+			if (m_drawing)
+			{
+				if (m_editMode == DrawLine)
+					setLine(m_draw_start_x, m_draw_start_y, m_mouseMove_last_x, m_mouseMove_last_y, 1, &painter);
+                                else if (m_editMode == DrawRectangle)
+                                        setRectangle(m_draw_start_x, m_draw_start_y, m_mouseMove_last_x, m_mouseMove_last_y, 1, &painter);
+				else if (m_editMode == DrawCircle)
+					setCircle(m_draw_start_x, m_draw_start_y, m_mouseMove_last_x, m_mouseMove_last_y, 1, &painter);
+			}
+			painter.drawPattern();
+			painter.drawGridLine();
 			break;
 		}
 
 		case QEvent::MouseMove:
 		case QEvent::MouseButtonPress:
+		case QEvent::MouseButtonRelease:
 		{
 			QMouseEvent *e = static_cast<QMouseEvent *>(event);
-			BigInteger x = (m_view_x + (e->x() >> m_scalePixel)) << m_scale;
-			BigInteger y = (m_view_y + (e->y() >> m_scalePixel)) << m_scale;
+			int x = e->x() >> m_scalePixel, y = e->y() >> m_scalePixel;
 			if (!m_scale)
 			{
-				if (e->buttons() & Qt::LeftButton)
+				if (e->type() == QEvent::MouseButtonRelease)
 				{
-					// Mouse event is not sent per pixel
-					// Emulate lines to fill the gap
+					if (m_drawing)
+					{
+						if (m_editMode == DrawLine)
+							setLine(m_draw_start_x, m_draw_start_y, x, y, 1);
+                                                else if (m_editMode == DrawRectangle)
+							setRectangle(m_draw_start_x, m_draw_start_y, x, y, 1);
+						else if (m_editMode == DrawCircle)
+							setCircle(m_draw_start_x, m_draw_start_y, x, y, 1);
+						m_drawing = false;
+					}
+				}
+				else if (e->buttons() & Qt::LeftButton)
+				{
 					if (e->type() == QEvent::MouseButtonPress)
-						setGrid(e->x() >> m_scalePixel, e->y() >> m_scalePixel, 1);
+					{
+						if (m_editMode == DrawFreehand)
+							setGrid(x, y, 1);
+						else
+						{
+							m_draw_start_x = x;
+							m_draw_start_y = y;
+						}
+						m_drawing = true;
+					}
 					else
-						setLine(m_mouseMove_last_x, m_mouseMove_last_y, e->x() >> m_scalePixel, e->y() >> m_scalePixel, 1);
+					{
+						// MouseMove event is not sent per pixel
+						// Use lines to fill the gap
+						if (m_editMode == DrawFreehand)
+							setLine(m_mouseMove_last_x, m_mouseMove_last_y, x, y, 1);
+						else
+						{
+							m_mouseMove_last_x = x;
+							m_mouseMove_last_y = y;
+							m_canvas->update();
+						}
+					}
 				}
 			}
-			m_mouseMove_last_x = e->x() >> m_scalePixel;
-			m_mouseMove_last_y = e->y() >> m_scalePixel;
-			emit coordinateChanged(x, y);
+			m_mouseMove_last_x = x;
+			m_mouseMove_last_y = y;
+			emit coordinateChanged((m_view_x + x) << m_scale, (m_view_y + y) << m_scale);
 			break;
 		}
 
