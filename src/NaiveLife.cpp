@@ -26,9 +26,6 @@
 
 REGISTER_ALGORITHM(NaiveLife)
 
-static const size_t BLOCK_DEPTH = 3;
-static const size_t BLOCK_SIZE = 1 << BLOCK_DEPTH;
-
 // node flags
 #define CHANGED       0  // This node has changed since last iteration
 #define KEEP          1  // Prevent this node from being deleted when deleting previous iteration
@@ -43,6 +40,10 @@ static const size_t BLOCK_SIZE = 1 << BLOCK_DEPTH;
 
 struct Block
 {
+public:
+	static const size_t DEPTH = 3;
+	static const size_t SIZE = 1 << DEPTH;
+
 	int flag;
 	quint64 population;
 
@@ -62,7 +63,7 @@ struct Block
 	}
 
 private:
-	uchar data[BLOCK_SIZE][BLOCK_SIZE];
+	uchar data[Block::SIZE][Block::SIZE];
 };
 
 // 00 01
@@ -82,14 +83,14 @@ NaiveLife::NaiveLife()
 	: m_running(false), m_readLock(new QMutex()), m_writeLock(new QMutex()), m_x(0), m_y(0), m_generation(0)
 {
 	setAcceptInfinity(false);
-	m_emptyNode.resize(BLOCK_DEPTH + 1);
-	for (size_t i = 0; i < BLOCK_DEPTH; i++)
+	m_emptyNode.resize(Block::DEPTH + 1);
+	for (size_t i = 0; i < Block::DEPTH; i++)
 		m_emptyNode[i] = NULL;
-	m_emptyNode[BLOCK_DEPTH] = reinterpret_cast<Node *>(newBlock());
-	reinterpret_cast<Block *>(m_emptyNode[BLOCK_DEPTH])->flag = 0;
+	m_emptyNode[Block::DEPTH] = reinterpret_cast<Node *>(newBlock());
+	reinterpret_cast<Block *>(m_emptyNode[Block::DEPTH])->flag = 0;
 	// initially a 16x16 block
-	m_root = newNode(BLOCK_DEPTH + 1);
-	m_depth = BLOCK_DEPTH + 1;
+	m_root = newNode(Block::DEPTH + 1);
+	m_depth = Block::DEPTH + 1;
 }
 
 NaiveLife::~NaiveLife()
@@ -97,7 +98,7 @@ NaiveLife::~NaiveLife()
 	delete m_readLock;
 	delete m_writeLock;
 	deleteNode(m_root, m_depth);
-	for (int i = BLOCK_DEPTH; i < m_emptyNode.size(); i++)
+	for (int i = Block::DEPTH; i < m_emptyNode.size(); i++)
 		deleteNode(m_emptyNode[i], i);
 }
 
@@ -109,8 +110,11 @@ void NaiveLife::setReceiveRect(const BigInteger &x, const BigInteger &y, quint64
 	mc_h = h;
 }
 
+#include <QTime>
 void NaiveLife::receive(DataChannel *channel)
 {
+	QTime timer;
+	timer.start();
 	m_writeLock->lock();
 	m_readLock->lock();
 	// out of range
@@ -125,12 +129,13 @@ void NaiveLife::receive(DataChannel *channel)
 		y2 = y1 + BigInteger(mc_h - 1);
 	}
 
-	size_t endDepth = qMax<size_t>(qMax(bitlen(mc_w), bitlen(mc_h)), BLOCK_DEPTH);
+	size_t endDepth = qMax<size_t>(qMax(bitlen(mc_w), bitlen(mc_h)), Block::DEPTH);
 	Node *e = emptyNode(m_depth);
 	receiveGrid(channel, m_root, e, e, e, false, false, false, m_depth, endDepth, x1, y1);
 	m_readLock->unlock();
 	m_writeLock->unlock();
 	emit gridChanged();
+	qDebug() << timer.elapsed();
 }
 
 void NaiveLife::receiveGrid(DataChannel *channel, Node *&node_ul, Node *&node_ur, Node *&node_dl, Node *&node_dr, bool ok_ur, bool ok_dl, bool ok_dr, size_t depth, size_t endDepth, const BigInteger &x, const BigInteger &y)
@@ -243,12 +248,12 @@ inline void NaiveLife::receiveGrid(DataChannel *channel, Node *&node_ul, Node *&
 
 void NaiveLife::receiveGrid(DataChannel *channel, Node *&node, size_t depth, quint64 x, quint64 y, int &state, quint64 &cnt)
 {
-	if (depth == BLOCK_DEPTH)
+	if (depth == Block::DEPTH)
 	{
 		bool changed = false;
 		do
 		{
-			quint64 d = qMin<quint64>(BLOCK_SIZE - x, cnt);
+			quint64 d = qMin<quint64>(Block::SIZE - x, cnt);
 			if (state)
 			{
 				if (node == emptyNode(depth))
@@ -264,11 +269,11 @@ void NaiveLife::receiveGrid(DataChannel *channel, Node *&node, size_t depth, qui
 						block->set(i, y, state);
 						if (y == 0)
 							SET_BIT(block->flag, UP_CHANGED);
-						if (y == BLOCK_SIZE - 1)
+						if (y == Block::SIZE - 1)
 							SET_BIT(block->flag, DOWN_CHANGED);
 						if (i == 0)
 							SET_BIT(block->flag, LEFT_CHANGED);
-						if (i == BLOCK_SIZE - 1)
+						if (i == Block::SIZE - 1)
 							SET_BIT(block->flag, RIGHT_CHANGED);
 					}
 				SET_BIT(block->flag, CHANGED);
@@ -279,7 +284,7 @@ void NaiveLife::receiveGrid(DataChannel *channel, Node *&node, size_t depth, qui
 				channel->receive(&state, &cnt);
 			x += d;
 		}
-		while (x < BLOCK_SIZE && state >= 0);
+		while (x < Block::SIZE && state >= 0);
 		if (changed)
 			computeBlockActiveFlag(reinterpret_cast<Block *>(node));
 	}
@@ -316,7 +321,7 @@ int NaiveLife::grid(const BigInteger &x, const BigInteger &y)
 	}
 	Node *p = m_root;
 	size_t depth = m_depth;
-	while (depth > BLOCK_DEPTH)
+	while (depth > Block::DEPTH)
 	{
 		if (p == emptyNode(depth))
 			break;
@@ -327,7 +332,7 @@ int NaiveLife::grid(const BigInteger &x, const BigInteger &y)
 	if (p == NULL)
 		ret = 0;
 	else
-		ret = reinterpret_cast<Block *>(p)->get(my_x.lowbits<int>(BLOCK_DEPTH), my_y.lowbits<int>(BLOCK_DEPTH));
+		ret = reinterpret_cast<Block *>(p)->get(my_x.lowbits<int>(Block::DEPTH), my_y.lowbits<int>(Block::DEPTH));
 	m_readLock->unlock();
 	return ret;
 }
@@ -348,14 +353,14 @@ void NaiveLife::setGrid(const BigInteger &x, const BigInteger &y, int state)
 	}
 	Node *p = m_root, *stack[m_depth + 1];
 	size_t depth = m_depth;
-	while (depth > BLOCK_DEPTH)
+	while (depth > Block::DEPTH)
 	{
 		stack[depth] = p;
 		int cid = (my_y.bit(depth - 1) << 1) | my_x.bit(depth - 1);
 		depth--;
 		if (p->child[cid] == emptyNode(depth))
 		{
-			if (depth == BLOCK_DEPTH)
+			if (depth == Block::DEPTH)
 				p->child[cid] = reinterpret_cast<Node *>(newBlock());
 			else
 				p->child[cid] = newNode(depth);
@@ -363,7 +368,7 @@ void NaiveLife::setGrid(const BigInteger &x, const BigInteger &y, int state)
 		p = p->child[cid];
 	}
 	Block *block = reinterpret_cast<Block *>(p);
-	int sx = my_x.lowbits<int>(BLOCK_DEPTH), sy = my_y.lowbits<int>(BLOCK_DEPTH);
+	int sx = my_x.lowbits<int>(Block::DEPTH), sy = my_y.lowbits<int>(Block::DEPTH);
 	if (block->get(sx, sy) && !state)
 		block->population--;
 	else if (!block->get(sx, sy) && state)
@@ -372,11 +377,11 @@ void NaiveLife::setGrid(const BigInteger &x, const BigInteger &y, int state)
 	block->flag |= BIT(CHANGED);
 	if (sy == 0)
 		block->flag |= BIT(UP_CHANGED);
-	if (sy == BLOCK_SIZE - 1)
+	if (sy == Block::SIZE - 1)
 		block->flag |= BIT(DOWN_CHANGED);
 	if (sx == 0)
 		block->flag |= BIT(LEFT_CHANGED);
-	if (sx == BLOCK_SIZE - 1)
+	if (sx == Block::SIZE - 1)
 		block->flag |= BIT(RIGHT_CHANGED);
 	computeBlockActiveFlag(block);
 	while (++depth <= m_depth)
@@ -393,7 +398,7 @@ void NaiveLife::clearGrid()
 	deleteNode(m_root->ur, m_depth - 1);
 	deleteNode(m_root->dl, m_depth - 1);
 	deleteNode(m_root->dr, m_depth - 1);
-	m_depth = BLOCK_DEPTH + 1;
+	m_depth = Block::DEPTH + 1;
 	m_root->ul = m_root->ur = m_root->dl = m_root->dr = emptyNode(m_depth - 1);
 	m_root->flag = 0;
 	m_x = 0;
@@ -459,15 +464,15 @@ inline void NaiveLife::computeBlockActiveFlag(Block *block)
 	CLR_BIT(block->flag, DOWN_ACTIVE);
 	CLR_BIT(block->flag, LEFT_ACTIVE);
 	CLR_BIT(block->flag, RIGHT_ACTIVE);
-	for (size_t i = 0; i < BLOCK_SIZE; i++)
+	for (size_t i = 0; i < Block::SIZE; i++)
 	{
 		if (block->get(i, 0))
 			block->flag |= BIT(UP_ACTIVE);
-		if (block->get(i, BLOCK_SIZE - 1))
+		if (block->get(i, Block::SIZE - 1))
 			block->flag |= BIT(DOWN_ACTIVE);
 		if (block->get(0, i))
 			block->flag |= BIT(LEFT_ACTIVE);
-		if (block->get(BLOCK_SIZE - 1, i))
+		if (block->get(Block::SIZE - 1, i))
 			block->flag |= BIT(RIGHT_ACTIVE);
 	}
 }
@@ -475,7 +480,7 @@ inline void NaiveLife::computeBlockActiveFlag(Block *block)
 inline void NaiveLife::computeNodeInfo(Node *node, size_t depth)
 {
 	int ul_flag, ur_flag, dl_flag, dr_flag;
-	if (depth == BLOCK_DEPTH + 1)
+	if (depth == Block::DEPTH + 1)
 	{
 		node->population = reinterpret_cast<Block *>(node->ul)->population
 				+ reinterpret_cast<Block *>(node->ur)->population
@@ -550,7 +555,7 @@ void NaiveLife::deleteNode(Node *node, size_t depth)
 {
 	if (node == emptyNode(depth))
 		return;
-	if (depth == BLOCK_DEPTH)
+	if (depth == Block::DEPTH)
 	{
 		Block *bnode = reinterpret_cast<Block *>(node);
 		if (TEST_BIT(bnode->flag, KEEP))
@@ -622,7 +627,7 @@ void NaiveLife::paint(CanvasPainter *painter, const BigInteger &x, const BigInte
 			h = len - y1;
 
 		// Step 1
-		size_t depth = m_depth - scale, endDepth = qMax<size_t>(qMax(bitlen(w), bitlen(h)), BLOCK_DEPTH);
+		size_t depth = m_depth - scale, endDepth = qMax<size_t>(qMax(bitlen(w), bitlen(h)), Block::DEPTH);
 		Node *node_ul = m_root, *node_ur = emptyNode(m_depth), *node_dl = emptyNode(m_depth), *node_dr = emptyNode(m_depth);
 		while (depth > endDepth)
 		{
@@ -697,7 +702,7 @@ inline void NaiveLife::drawNode(CanvasPainter *painter, Node *node_ul, Node *nod
 
 void NaiveLife::drawNode(CanvasPainter *painter, Node *node, int x1, int y1, int x2, int y2, size_t depth, size_t scale, int offset_x, int offset_y)
 {
-	if (depth + scale == BLOCK_DEPTH)
+	if (depth + scale == Block::DEPTH)
 	{
 		if (depth == 0)
 			painter->drawGrid(offset_x + x1, offset_y + y1, reinterpret_cast<Block *>(node)->population > 0);
@@ -733,7 +738,7 @@ void NaiveLife::runStep()
 
 void NaiveLife::runNode(Node *&p, Node *node, Node *up, Node *down, Node *left, Node *right, Node *upleft, Node *upright, Node *downleft, Node *downright, size_t depth)
 {
-	if (depth == BLOCK_DEPTH)
+	if (depth == Block::DEPTH)
 	{
 		Block *bnode = reinterpret_cast<Block *>(node);
 		Block *bup = reinterpret_cast<Block *>(up);
@@ -758,8 +763,8 @@ void NaiveLife::runNode(Node *&p, Node *node, Node *up, Node *down, Node *left, 
 			p = reinterpret_cast<Node *>(block);
 			const int dx[8] = {-1,  0,  1, 1, 1, 0, -1, -1};
 			const int dy[8] = {-1, -1, -1, 0, 1, 1,  1,  0};
-			for (size_t x = 0; x < BLOCK_SIZE; x++)
-				for (size_t y = 0; y < BLOCK_SIZE; y++)
+			for (size_t x = 0; x < Block::SIZE; x++)
+				for (size_t y = 0; y < Block::SIZE; y++)
 				{
 					int n = 0;
 					for (int d = 0; d < 8; d++)
@@ -768,24 +773,24 @@ void NaiveLife::runNode(Node *&p, Node *node, Node *up, Node *down, Node *left, 
 						if (sy < 0)
 						{
 							if (sx < 0)
-								n += bupleft->get(BLOCK_SIZE - 1, BLOCK_SIZE - 1);
-							else if (sx >= static_cast<int>(BLOCK_SIZE))
-								n += bupright->get(0, BLOCK_SIZE - 1);
+								n += bupleft->get(Block::SIZE - 1, Block::SIZE - 1);
+							else if (sx >= static_cast<int>(Block::SIZE))
+								n += bupright->get(0, Block::SIZE - 1);
 							else
-								n += bup->get(sx, BLOCK_SIZE - 1);
+								n += bup->get(sx, Block::SIZE - 1);
 						}
-						else if (sy >= static_cast<int>(BLOCK_SIZE))
+						else if (sy >= static_cast<int>(Block::SIZE))
 						{
 							if (sx < 0)
-								n += bdownleft->get(BLOCK_SIZE - 1, 0);
-							else if (sx >= static_cast<int>(BLOCK_SIZE))
+								n += bdownleft->get(Block::SIZE - 1, 0);
+							else if (sx >= static_cast<int>(Block::SIZE))
 								n += bdownright->get(0, 0);
 							else
 								n += bdown->get(sx, 0);
 						}
 						else if (sx < 0)
-							n += bleft->get(BLOCK_SIZE - 1, sy);
-						else if (sx >= static_cast<int>(BLOCK_SIZE))
+							n += bleft->get(Block::SIZE - 1, sy);
+						else if (sx >= static_cast<int>(Block::SIZE))
 							n += bright->get(0, sy);
 						else
 							n += bnode->get(sx, sy);
@@ -796,11 +801,11 @@ void NaiveLife::runNode(Node *&p, Node *node, Node *up, Node *down, Node *left, 
 					{
 						if (y == 0)
 							SET_BIT(block->flag, UP_CHANGED);
-						if (y == BLOCK_SIZE - 1)
+						if (y == Block::SIZE - 1)
 							SET_BIT(block->flag, DOWN_CHANGED);
 						if (x == 0)
 							SET_BIT(block->flag, LEFT_CHANGED);
-						if (x == BLOCK_SIZE - 1)
+						if (x == Block::SIZE - 1)
 							SET_BIT(block->flag, RIGHT_CHANGED);
 						SET_BIT(block->flag, CHANGED);
 					}
