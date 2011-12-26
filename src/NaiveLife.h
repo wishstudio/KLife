@@ -55,7 +55,6 @@ private:
 	inline void receiveGrid(DataChannel *channel, Node *&node_ul, Node *&node_ur, Node *&node_dl, Node *&node_dr, size_t depth, quint64 x, quint64 y, int &state, quint64 &cnt);
 	void receiveGrid(DataChannel *channel, Node *&node, size_t depth, quint64 x, quint64 y, int &state, quint64 &cnt);
 	void expand();
-	inline void computeBlockActiveFlag(Block *block);
 	inline void computeNodeInfo(Node *node, size_t depth);
 	inline Block *newBlock();
 	inline Node *newNode(size_t depth);

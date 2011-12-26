@@ -30,13 +30,9 @@ REGISTER_ALGORITHM(NaiveLife)
 #define CHANGED       0  // This node has changed since last iteration
 #define KEEP          1  // Prevent this node from being deleted when deleting previous iteration
 #define UP_CHANGED    2  // The top row has changed since last iteration
-#define UP_ACTIVE     3  // The top row has active cells
-#define DOWN_CHANGED  4  // The bottom row has changed since last iteration
-#define DOWN_ACTIVE   5  // The bottom row has active cells
-#define LEFT_CHANGED  6  // The left column has changed since last iteration
-#define LEFT_ACTIVE   7  // The left column has active cells
-#define RIGHT_CHANGED 8  // The right column has changed since last iteration
-#define RIGHT_ACTIVE  9  // The right column has active cells
+#define DOWN_CHANGED  3  // The bottom row has changed since last iteration
+#define LEFT_CHANGED  4  // The left column has changed since last iteration
+#define RIGHT_CHANGED 5  // The right column has changed since last iteration
 
 struct Block
 {
@@ -88,9 +84,9 @@ NaiveLife::NaiveLife()
 		m_emptyNode[i] = NULL;
 	m_emptyNode[Block::DEPTH] = reinterpret_cast<Node *>(newBlock());
 	reinterpret_cast<Block *>(m_emptyNode[Block::DEPTH])->flag = 0;
-	// initially a 16x16 block
-	m_root = newNode(Block::DEPTH + 1);
-	m_depth = Block::DEPTH + 1;
+	// run() requires m_depth >= Block::DEPTH + 2
+	m_depth = Block::DEPTH + 2;
+	m_root = newNode(m_depth);
 }
 
 NaiveLife::~NaiveLife()
@@ -110,11 +106,8 @@ void NaiveLife::setReceiveRect(const BigInteger &x, const BigInteger &y, quint64
 	mc_h = h;
 }
 
-#include <QTime>
 void NaiveLife::receive(DataChannel *channel)
 {
-	QTime timer;
-	timer.start();
 	m_writeLock->lock();
 	m_readLock->lock();
 	// out of range
@@ -135,7 +128,6 @@ void NaiveLife::receive(DataChannel *channel)
 	m_readLock->unlock();
 	m_writeLock->unlock();
 	emit gridChanged();
-	qDebug() << timer.elapsed();
 }
 
 void NaiveLife::receiveGrid(DataChannel *channel, Node *&node_ul, Node *&node_ur, Node *&node_dl, Node *&node_dr, bool ok_ur, bool ok_dl, bool ok_dr, size_t depth, size_t endDepth, const BigInteger &x, const BigInteger &y)
@@ -250,7 +242,6 @@ void NaiveLife::receiveGrid(DataChannel *channel, Node *&node, size_t depth, qui
 {
 	if (depth == Block::DEPTH)
 	{
-		bool changed = false;
 		do
 		{
 			quint64 d = qMin<quint64>(Block::SIZE - x, cnt);
@@ -277,7 +268,6 @@ void NaiveLife::receiveGrid(DataChannel *channel, Node *&node, size_t depth, qui
 							SET_BIT(block->flag, RIGHT_CHANGED);
 					}
 				SET_BIT(block->flag, CHANGED);
-				changed = true;
 			}
 			cnt -= d;
 			if (!cnt)
@@ -285,8 +275,6 @@ void NaiveLife::receiveGrid(DataChannel *channel, Node *&node, size_t depth, qui
 			x += d;
 		}
 		while (x < Block::SIZE && state >= 0);
-		if (changed)
-			computeBlockActiveFlag(reinterpret_cast<Block *>(node));
 	}
 	else
 	{
@@ -383,7 +371,6 @@ void NaiveLife::setGrid(const BigInteger &x, const BigInteger &y, int state)
 		block->flag |= BIT(LEFT_CHANGED);
 	if (sx == Block::SIZE - 1)
 		block->flag |= BIT(RIGHT_CHANGED);
-	computeBlockActiveFlag(block);
 	while (++depth <= m_depth)
 		computeNodeInfo(stack[depth], depth);
 	m_writeLock->unlock();
@@ -398,7 +385,7 @@ void NaiveLife::clearGrid()
 	deleteNode(m_root->ur, m_depth - 1);
 	deleteNode(m_root->dl, m_depth - 1);
 	deleteNode(m_root->dr, m_depth - 1);
-	m_depth = Block::DEPTH + 1;
+	m_depth = Block::DEPTH + 2;
 	m_root->ul = m_root->ur = m_root->dl = m_root->dr = emptyNode(m_depth - 1);
 	m_root->flag = 0;
 	m_x = 0;
@@ -458,25 +445,6 @@ void NaiveLife::expand()
 	m_depth++;
 }
 
-inline void NaiveLife::computeBlockActiveFlag(Block *block)
-{
-	CLR_BIT(block->flag, UP_ACTIVE);
-	CLR_BIT(block->flag, DOWN_ACTIVE);
-	CLR_BIT(block->flag, LEFT_ACTIVE);
-	CLR_BIT(block->flag, RIGHT_ACTIVE);
-	for (size_t i = 0; i < Block::SIZE; i++)
-	{
-		if (block->get(i, 0))
-			block->flag |= BIT(UP_ACTIVE);
-		if (block->get(i, Block::SIZE - 1))
-			block->flag |= BIT(DOWN_ACTIVE);
-		if (block->get(0, i))
-			block->flag |= BIT(LEFT_ACTIVE);
-		if (block->get(Block::SIZE - 1, i))
-			block->flag |= BIT(RIGHT_ACTIVE);
-	}
-}
-
 inline void NaiveLife::computeNodeInfo(Node *node, size_t depth)
 {
 	int ul_flag, ur_flag, dl_flag, dr_flag;
@@ -502,24 +470,16 @@ inline void NaiveLife::computeNodeInfo(Node *node, size_t depth)
 	node->flag = TEST_BIT(ul_flag, CHANGED) | TEST_BIT(ur_flag, CHANGED) | TEST_BIT(dl_flag, CHANGED) | TEST_BIT(dr_flag, CHANGED);
 
 	node->flag |= TEST_BIT(ul_flag, UP_CHANGED);
-	node->flag |= TEST_BIT(ul_flag, UP_ACTIVE);
 	node->flag |= TEST_BIT(ul_flag, LEFT_CHANGED);
-	node->flag |= TEST_BIT(ul_flag, LEFT_ACTIVE);
 
 	node->flag |= TEST_BIT(ur_flag, UP_CHANGED);
-	node->flag |= TEST_BIT(ur_flag, UP_ACTIVE);
 	node->flag |= TEST_BIT(ur_flag, RIGHT_CHANGED);
-	node->flag |= TEST_BIT(ur_flag, RIGHT_ACTIVE);
 
 	node->flag |= TEST_BIT(dl_flag, DOWN_CHANGED);
-	node->flag |= TEST_BIT(dl_flag, DOWN_ACTIVE);
 	node->flag |= TEST_BIT(dl_flag, LEFT_CHANGED);
-	node->flag |= TEST_BIT(dl_flag, LEFT_ACTIVE);
 
 	node->flag |= TEST_BIT(dr_flag, DOWN_CHANGED);
-	node->flag |= TEST_BIT(dr_flag, DOWN_ACTIVE);
 	node->flag |= TEST_BIT(dr_flag, RIGHT_CHANGED);
-	node->flag |= TEST_BIT(dr_flag, RIGHT_ACTIVE);
 }
 
 inline Block *NaiveLife::newBlock()
@@ -810,7 +770,6 @@ void NaiveLife::runNode(Node *&p, Node *node, Node *up, Node *down, Node *left, 
 						SET_BIT(block->flag, CHANGED);
 					}
 				}
-			computeBlockActiveFlag(block);
 		}
 		else if (node != emptyNode(depth))
 		{
@@ -849,7 +808,7 @@ void NaiveLife::run()
 {
 	m_running = true;
 	m_writeLock->lock();
-	if (TEST_BIT(m_root->flag, UP_ACTIVE) || TEST_BIT(m_root->flag, DOWN_ACTIVE) || TEST_BIT(m_root->flag, LEFT_ACTIVE) || TEST_BIT(m_root->flag, RIGHT_ACTIVE))
+	if (m_root->ul->population - m_root->ul->dr->population || m_root->ur->population - m_root->ur->dl->population || m_root->dl->population - m_root->dl->ur->population || m_root->dr->population - m_root->dr->ul->population)
 	{
 		m_readLock->lock();
 		expand();
