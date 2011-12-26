@@ -43,9 +43,26 @@ static const size_t BLOCK_SIZE = 1 << BLOCK_DEPTH;
 
 struct Block
 {
-	unsigned char data[BLOCK_SIZE][BLOCK_SIZE];
 	int flag;
 	quint64 population;
+
+	inline void clear()
+	{
+		memset(data, 0, sizeof data);
+	}
+
+	inline void set(int x, int y, int state)
+	{
+		data[y][x] = state;
+	}
+
+	inline int get(int x, int y) const
+	{
+		return data[y][x];
+	}
+
+private:
+	uchar data[BLOCK_SIZE][BLOCK_SIZE];
 };
 
 // 00 01
@@ -238,13 +255,13 @@ void NaiveLife::receiveGrid(DataChannel *channel, Node *&node, size_t depth, qui
 					node = reinterpret_cast<Node *>(newBlock());
 				Block *block = reinterpret_cast<Block *>(node);
 				for (unsigned int i = x; i < x + d; i++)
-					if (block->data[y][i] != state)
+					if (block->get(i, y) != state)
 					{
-						if (!block->data[y][i])
+						if (!block->get(i, y))
 							block->population++;
 						else
 							block->population--;
-						block->data[y][i] = state;
+						block->set(i, y, state);
 						if (y == 0)
 							SET_BIT(block->flag, UP_CHANGED);
 						if (y == BLOCK_SIZE - 1)
@@ -310,7 +327,7 @@ int NaiveLife::grid(const BigInteger &x, const BigInteger &y)
 	if (p == NULL)
 		ret = 0;
 	else
-		ret = reinterpret_cast<Block *>(p)->data[my_y.lowbits<int>(BLOCK_DEPTH)][my_x.lowbits<int>(BLOCK_DEPTH)];
+		ret = reinterpret_cast<Block *>(p)->get(my_x.lowbits<int>(BLOCK_DEPTH), my_y.lowbits<int>(BLOCK_DEPTH));
 	m_readLock->unlock();
 	return ret;
 }
@@ -347,11 +364,11 @@ void NaiveLife::setGrid(const BigInteger &x, const BigInteger &y, int state)
 	}
 	Block *block = reinterpret_cast<Block *>(p);
 	int sx = my_x.lowbits<int>(BLOCK_DEPTH), sy = my_y.lowbits<int>(BLOCK_DEPTH);
-	if (block->data[sy][sx] && !state)
+	if (block->get(sx, sy) && !state)
 		block->population--;
-	else if (!block->data[sy][sx] && state)
+	else if (!block->get(sx, sy) && state)
 		block->population++;
-	block->data[sy][sx] = state;
+	block->set(sx, sy, state);
 	block->flag |= BIT(CHANGED);
 	if (sy == 0)
 		block->flag |= BIT(UP_CHANGED);
@@ -444,13 +461,13 @@ inline void NaiveLife::computeBlockActiveFlag(Block *block)
 	CLR_BIT(block->flag, RIGHT_ACTIVE);
 	for (size_t i = 0; i < BLOCK_SIZE; i++)
 	{
-		if (block->data[0][i])
+		if (block->get(i, 0))
 			block->flag |= BIT(UP_ACTIVE);
-		if (block->data[BLOCK_SIZE - 1][i])
+		if (block->get(i, BLOCK_SIZE - 1))
 			block->flag |= BIT(DOWN_ACTIVE);
-		if (block->data[i][0])
+		if (block->get(0, i))
 			block->flag |= BIT(LEFT_ACTIVE);
-		if (block->data[i][BLOCK_SIZE - 1])
+		if (block->get(BLOCK_SIZE - 1, i))
 			block->flag |= BIT(RIGHT_ACTIVE);
 	}
 }
@@ -503,7 +520,7 @@ inline void NaiveLife::computeNodeInfo(Node *node, size_t depth)
 inline Block *NaiveLife::newBlock()
 {
 	Block *ret = newObject<Block>();
-	memset(ret->data, 0, sizeof ret->data);
+	ret->clear();
 	ret->flag = 0;
 	ret->population = 0;
 	return ret;
@@ -695,10 +712,10 @@ void NaiveLife::drawNode(CanvasPainter *painter, Node *node, int x1, int y1, int
 						state = 0;
 						for (int i = x * (1 << scale); i < (x + 1) * (1 << scale); i++)
 							for (int j = y * (1 << scale); j < (y + 1) * (1 << scale); j++)
-								state |= reinterpret_cast<Block *>(node)->data[j][i] > 0;
+								state |= reinterpret_cast<Block *>(node)->get(i, j) > 0;
 					}
 					else
-						state = reinterpret_cast<Block *>(node)->data[y][x];
+						state = reinterpret_cast<Block *>(node)->get(x, y);
 					painter->drawGrid(offset_x + x, offset_y + y, state);
 				}
 		}
@@ -741,49 +758,49 @@ void NaiveLife::runNode(Node *&p, Node *node, Node *up, Node *down, Node *left, 
 			p = reinterpret_cast<Node *>(block);
 			const int dx[8] = {-1,  0,  1, 1, 1, 0, -1, -1};
 			const int dy[8] = {-1, -1, -1, 0, 1, 1,  1,  0};
-			for (size_t i = 0; i < BLOCK_SIZE; i++)
-				for (size_t j = 0; j < BLOCK_SIZE; j++)
+			for (size_t x = 0; x < BLOCK_SIZE; x++)
+				for (size_t y = 0; y < BLOCK_SIZE; y++)
 				{
 					int n = 0;
 					for (int d = 0; d < 8; d++)
 					{
-						int di = static_cast<int>(i) + dy[d], dj = static_cast<int>(j) + dx[d];
-						if (di < 0)
+						int sx = static_cast<int>(x) + dx[d], sy = static_cast<int>(y) + dy[d];
+						if (sy < 0)
 						{
-							if (dj < 0)
-								n += bupleft->data[BLOCK_SIZE - 1][BLOCK_SIZE - 1];
-							else if (dj >= static_cast<int>(BLOCK_SIZE))
-								n += bupright->data[BLOCK_SIZE - 1][0];
+							if (sx < 0)
+								n += bupleft->get(BLOCK_SIZE - 1, BLOCK_SIZE - 1);
+							else if (sx >= static_cast<int>(BLOCK_SIZE))
+								n += bupright->get(0, BLOCK_SIZE - 1);
 							else
-								n += bup->data[BLOCK_SIZE - 1][dj];
+								n += bup->get(sx, BLOCK_SIZE - 1);
 						}
-						else if (di >= static_cast<int>(BLOCK_SIZE))
+						else if (sy >= static_cast<int>(BLOCK_SIZE))
 						{
-							if (dj < 0)
-								n += bdownleft->data[0][BLOCK_SIZE - 1];
-							else if (dj >= static_cast<int>(BLOCK_SIZE))
-								n += bdownright->data[0][0];
+							if (sx < 0)
+								n += bdownleft->get(BLOCK_SIZE - 1, 0);
+							else if (sx >= static_cast<int>(BLOCK_SIZE))
+								n += bdownright->get(0, 0);
 							else
-								n += bdown->data[0][dj];
+								n += bdown->get(sx, 0);
 						}
-						else if (dj < 0)
-							n += bleft->data[di][BLOCK_SIZE - 1];
-						else if (dj >= static_cast<int>(BLOCK_SIZE))
-							n += bright->data[di][0];
+						else if (sx < 0)
+							n += bleft->get(BLOCK_SIZE - 1, sy);
+						else if (sx >= static_cast<int>(BLOCK_SIZE))
+							n += bright->get(0, sy);
 						else
-							n += bnode->data[di][dj];
+							n += bnode->get(sx, sy);
 					}
-					block->data[i][j] = ((n == 3) || (bnode->data[i][j] && n == 2));
-					block->population += block->data[i][j] > 0;
-					if (block->data[i][j] != bnode->data[i][j])
+					block->set(x, y, ((n == 3) || (bnode->get(x, y) && n == 2)));
+					block->population += block->get(x, y) > 0;
+					if (block->get(x, y) != bnode->get(x, y))
 					{
-						if (i == 0)
+						if (y == 0)
 							SET_BIT(block->flag, UP_CHANGED);
-						if (i == BLOCK_SIZE - 1)
+						if (y == BLOCK_SIZE - 1)
 							SET_BIT(block->flag, DOWN_CHANGED);
-						if (j == 0)
+						if (x == 0)
 							SET_BIT(block->flag, LEFT_CHANGED);
-						if (j == BLOCK_SIZE - 1)
+						if (x == BLOCK_SIZE - 1)
 							SET_BIT(block->flag, RIGHT_CHANGED);
 						SET_BIT(block->flag, CHANGED);
 					}
