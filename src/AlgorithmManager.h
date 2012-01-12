@@ -46,6 +46,7 @@ public slots:
 
 signals:
 	void ruleChanged();
+	void algorithmChanged();
 	void rectChanged();
 	void gridChanged();
 

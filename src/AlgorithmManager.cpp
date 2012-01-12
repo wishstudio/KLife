@@ -63,6 +63,7 @@ void AlgorithmManager::setRule(Rule *rule)
 		}
 		if (!self()->m_algorithm)
 			qFatal("No algorithm supports rule %s.", qPrintable(rule->string()));
+		emit self()->algorithmChanged();
 	}
 	emit self()->ruleChanged();
 }

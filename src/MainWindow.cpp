@@ -48,32 +48,16 @@ MainWindow::MainWindow(QWidget *parent)
 		QFormLayout *layout = new QFormLayout();
 		layout->setMargin(0);
 		layout->setSpacing(0);
+		layout->setLabelAlignment(Qt::AlignLeft);
 		m_generation = new QLabel();
 		m_generation->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
-		layout->addRow(new QLabel(i18n("Generation:")), m_generation);
+		layout->addRow(new QLabel(i18n("Generation: ")), m_generation);
 		m_population = new QLabel();
 		m_population->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
-		layout->addRow(new QLabel(i18n("Population:")), m_population);
+		layout->addRow(new QLabel(i18n("Population: ")), m_population);
 		form->setLayout(layout);
 		statusBar()->addWidget(form);
 	}
-	{
-		QWidget *form = new QWidget();
-		form->setStyleSheet("font-family: Monospace; font-size: 11px;");
-		form->setMinimumWidth(130);
-		QFormLayout *layout = new QFormLayout();
-		layout->setMargin(0);
-		layout->setSpacing(0);
-		m_coordinate_x = new QLabel();
-		m_coordinate_x->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
-		layout->addRow(new QLabel("X:"), m_coordinate_x);
-		m_coordinate_y = new QLabel();
-		m_coordinate_y->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
-		layout->addRow(new QLabel("Y:"), m_coordinate_y);
-		form->setLayout(layout);
-		statusBar()->addWidget(form);
-	}
-	connect(AlgorithmManager::self(), SIGNAL(gridChanged()), this, SLOT(gridChanged()));
 	{
 		QWidget *form = new QWidget();
 		form->setStyleSheet("font-family: Monospace; font-size: 11px;");
@@ -81,14 +65,37 @@ MainWindow::MainWindow(QWidget *parent)
 		QFormLayout *layout = new QFormLayout();
 		layout->setMargin(0);
 		layout->setSpacing(0);
-		m_rule = new QLabel();
-		m_rule->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
-		layout->addRow(new QLabel(i18n("Rule:")), m_rule);
-		layout->addRow(new QWidget());
+		layout->setLabelAlignment(Qt::AlignLeft);
+		m_coordinate_x = new QLabel();
+		m_coordinate_x->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
+		layout->addRow(new QLabel("X: "), m_coordinate_x);
+		m_coordinate_y = new QLabel();
+		m_coordinate_y->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
+		layout->addRow(new QLabel("Y: "), m_coordinate_y);
 		form->setLayout(layout);
 		statusBar()->addWidget(form);
 	}
+	{
+		QWidget *form = new QWidget();
+		form->setStyleSheet("font-family: Monospace; font-size: 11px;");
+		form->setMinimumWidth(200);
+		QFormLayout *layout = new QFormLayout();
+		layout->setMargin(0);
+		layout->setSpacing(0);
+		layout->setLabelAlignment(Qt::AlignLeft);
+		m_rule = new QLabel();
+		m_rule->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
+		layout->addRow(new QLabel(i18n("Rule: ")), m_rule);
+		m_algorithm = new QLabel();
+		m_algorithm->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
+		layout->addRow(new QLabel(i18n("Algorithm: ")), m_algorithm);
+		form->setLayout(layout);
+		statusBar()->addWidget(form);
+	}
+
 	connect(AlgorithmManager::self(), SIGNAL(ruleChanged()), this, SLOT(ruleChanged()));
+	connect(AlgorithmManager::self(), SIGNAL(algorithmChanged()), this, SLOT(algorithmChanged()));
+	connect(AlgorithmManager::self(), SIGNAL(gridChanged()), this, SLOT(gridChanged()));
 
 	// TODO
 	AlgorithmManager::setRule(new RuleLife("3", "23"));
@@ -106,15 +113,20 @@ void MainWindow::coordinateChanged(const BigInteger &x, const BigInteger &y)
 	m_coordinate_y->setText(y);
 }
 
+void MainWindow::ruleChanged()
+{
+	m_rule->setText(QString("%1(%2)").arg(AlgorithmManager::rule()->string(), AlgorithmManager::rule()->name()));
+}
+
+void MainWindow::algorithmChanged()
+{
+	m_algorithm->setText(AlgorithmManager::algorithm()->name());
+}
+
 void MainWindow::gridChanged()
 {
 	m_generation->setText(AlgorithmManager::algorithm()->generation());
 	m_population->setText(AlgorithmManager::algorithm()->population());
-}
-
-void MainWindow::ruleChanged()
-{
-	m_rule->setText(QString("%1(%2)").arg(AlgorithmManager::rule()->string(), AlgorithmManager::rule()->name()));
 }
 
 void MainWindow::newAction()
