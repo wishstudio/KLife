@@ -1,5 +1,5 @@
 /*
- *   Copyright (C) 2011 by Xiangyan Sun <wishstudio@gmail.com>
+ *   Copyright (C) 2011,2012 by Xiangyan Sun <wishstudio@gmail.com>
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as
@@ -21,6 +21,7 @@
 
 #include "AlgorithmManager.h"
 #include "CanvasPainter.h"
+#include "RuleLife.h"
 #include "TreeLife.h"
 #include "Utils.h"
 
@@ -758,7 +759,8 @@ void TreeLife::runNode(Node *&p, Node *node, Node *up, Node *down, Node *left, N
 						else
 							n += bnode->get(sx, sy);
 					}
-					block->set(x, y, ((n == 3) || (bnode->get(x, y) && n == 2)));
+					//block->set(x, y, ((n == 3) || (bnode->get(x, y) && n == 2)));
+					block->set(x, y, reinterpret_cast<RuleLife *>(AlgorithmManager::rule())->nextState(bnode->get(x, y), n));
 					block->population += block->get(x, y) > 0;
 					if (block->get(x, y) != bnode->get(x, y))
 					{
@@ -807,8 +809,11 @@ void TreeLife::runNode(Node *&p, Node *node, Node *up, Node *down, Node *left, N
 	}
 }
 
+#include <QTime>
 void TreeLife::run()
 {
+	QTime timer;
+	timer.start();
 	m_running = true;
 	m_writeLock->lock();
 	if (m_root->ul->population - m_root->ul->dr->population || m_root->ur->population - m_root->ur->dl->population || m_root->dl->population - m_root->dl->ur->population || m_root->dr->population - m_root->dr->ul->population)
@@ -827,4 +832,5 @@ void TreeLife::run()
 	m_generation = m_generation + 1;
 	m_running = false;
 	emit gridChanged();
+	qDebug() << timer.elapsed();
 }

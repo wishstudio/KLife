@@ -1,5 +1,5 @@
 /*
- *   Copyright (C) 2011 by Xiangyan Sun <wishstudio@gmail.com>
+ *   Copyright (C) 2011,2012 by Xiangyan Sun <wishstudio@gmail.com>
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as
@@ -25,6 +25,7 @@
 #include "AbstractAlgorithm.h"
 #include "BigInteger.h"
 #include "MemoryManager.h"
+#include "Rule.h"
 
 struct Block;
 struct Node;
@@ -39,6 +40,8 @@ public:
 	virtual ~TreeLife();
 
 	virtual QString name() { return "TreeLife"; }
+	virtual bool acceptRule(Rule *rule) { return rule->type() == Rule::Life; }
+
 	virtual void setReceiveRect(const BigInteger &x, const BigInteger &y, quint64 w, quint64 h);
 	virtual void receive(DataChannel *channel);
 	virtual int grid(const BigInteger &x, const BigInteger &y);

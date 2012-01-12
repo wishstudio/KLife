@@ -1,5 +1,5 @@
 /*
- *   Copyright (C) 2011 by Xiangyan Sun <wishstudio@gmail.com>
+ *   Copyright (C) 2011,2012 by Xiangyan Sun <wishstudio@gmail.com>
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as
@@ -33,14 +33,14 @@
 #include "Editor.h"
 #include "FileFormatManager.h"
 #include "MainWindow.h"
+#include "RuleLife.h"
 
 MainWindow::MainWindow(QWidget *parent)
 	: KXmlGuiWindow(parent)
 {
-	AlgorithmManager::algorithm()->setInfinity(true, true);
-	m_editor = new Editor(this);
-	setCentralWidget(m_editor);
+	statusBar()->setSizeGripEnabled(true);
 	setupActions();
+
 	{
 		QWidget *form = new QWidget();
 		form->setStyleSheet("font-family: Monospace; font-size: 11px;");
@@ -57,7 +57,6 @@ MainWindow::MainWindow(QWidget *parent)
 		form->setLayout(layout);
 		statusBar()->addWidget(form);
 	}
-	statusBar()->setSizeGripEnabled(true);
 	{
 		QWidget *form = new QWidget();
 		form->setStyleSheet("font-family: Monospace; font-size: 11px;");
@@ -74,10 +73,31 @@ MainWindow::MainWindow(QWidget *parent)
 		form->setLayout(layout);
 		statusBar()->addWidget(form);
 	}
-
-	gridChanged();
 	connect(AlgorithmManager::self(), SIGNAL(gridChanged()), this, SLOT(gridChanged()));
+	{
+		QWidget *form = new QWidget();
+		form->setStyleSheet("font-family: Monospace; font-size: 11px;");
+		form->setMinimumWidth(200);
+		QFormLayout *layout = new QFormLayout();
+		layout->setMargin(0);
+		layout->setSpacing(0);
+		m_rule = new QLabel();
+		m_rule->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
+		layout->addRow(new QLabel(i18n("Rule:")), m_rule);
+		layout->addRow(new QWidget());
+		form->setLayout(layout);
+		statusBar()->addWidget(form);
+	}
+	connect(AlgorithmManager::self(), SIGNAL(ruleChanged()), this, SLOT(ruleChanged()));
+
+	// TODO
+	AlgorithmManager::setRule(new RuleLife("3", "23"));
+	AlgorithmManager::algorithm()->setInfinity(true, true);
+	gridChanged();
+
+	m_editor = new Editor(this);
 	connect(m_editor, SIGNAL(coordinateChanged(const BigInteger &, const BigInteger &)), this, SLOT(coordinateChanged(const BigInteger &, const BigInteger &)));
+	setCentralWidget(m_editor);
 }
 
 void MainWindow::coordinateChanged(const BigInteger &x, const BigInteger &y)
@@ -90,6 +110,11 @@ void MainWindow::gridChanged()
 {
 	m_generation->setText(AlgorithmManager::algorithm()->generation());
 	m_population->setText(AlgorithmManager::algorithm()->population());
+}
+
+void MainWindow::ruleChanged()
+{
+	m_rule->setText(QString("%1(%2)").arg(AlgorithmManager::rule()->string(), AlgorithmManager::rule()->name()));
 }
 
 void MainWindow::newAction()

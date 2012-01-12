@@ -1,5 +1,5 @@
 /*
- *   Copyright (C) 2011,2012 by Xiangyan Sun <wishstudio@gmail.com>
+ *   Copyright (C) 2012 by Xiangyan Sun <wishstudio@gmail.com>
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as
@@ -17,35 +17,41 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-#ifndef MAINWINDOW_H
-#define MAINWINDOW_H
+#include "RuleLife.h"
 
-#include <KXmlGuiWindow>
-
-class QLabel;
-class BigInteger;
-class Editor;
-class MainWindow: public KXmlGuiWindow
+static inline QString ruleToString(int rule)
 {
-	Q_OBJECT
+	QString ret;
+	for (int i = 0; rule; rule >>= 1, i++)
+		if (rule & 1)
+			ret.append('0' + i);
+	return ret;
+}
 
-public:
-	MainWindow(QWidget *parent = 0);
+static inline int stringToRule(QString str)
+{
+	int ret = 0;
+	for (int i = 0; i < str.length(); i++)
+		SET_BIT(ret, str.at(i).toAscii() - '0');
+	return ret;
+}
 
-public slots:
-	void coordinateChanged(const BigInteger &x, const BigInteger &y);
-	void gridChanged();
-	void ruleChanged();
-	void newAction();
-	void openAction();
+QString RuleLife::B() const
+{
+	return ruleToString(b);
+}
 
-private:
-	void setupActions();
+QString RuleLife::S() const
+{
+	return ruleToString(s);
+}
 
-	QLabel *m_coordinate_x, *m_coordinate_y;
-	QLabel *m_generation, *m_population;
-	QLabel *m_rule, *m_algorithm;
-	Editor *m_editor;
-};
+void RuleLife::setB(QString str)
+{
+	b = stringToRule(str);
+}
 
-#endif
+void RuleLife::setS(QString str)
+{
+	s = stringToRule(str);
+}

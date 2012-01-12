@@ -1,5 +1,5 @@
 /*
- *   Copyright (C) 2011 by Xiangyan Sun <wishstudio@gmail.com>
+ *   Copyright (C) 2011,2012 by Xiangyan Sun <wishstudio@gmail.com>
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as
@@ -25,6 +25,7 @@
 #include "Utils.h"
 
 class AbstractAlgorithm;
+class Rule;
 class AlgorithmManager: public QObject
 {
 	Q_OBJECT
@@ -32,7 +33,11 @@ class AlgorithmManager: public QObject
 public:
 	ABSTRACT_FACTORY(Algorithm)
 
+	AlgorithmManager();
+
 	static AlgorithmManager *self();
+	static Rule *rule() { return self()->m_rule; }
+	static void setRule(Rule *rule);
 	static AbstractAlgorithm *algorithm() { return self()->m_algorithm; }
 	static void registerAlgorithm(AbstractAlgorithmFactory *algorithmFactory);
 
@@ -40,11 +45,13 @@ public slots:
 	void runStep();
 
 signals:
+	void ruleChanged();
 	void rectChanged();
 	void gridChanged();
 
 private:
 	AbstractAlgorithm *m_algorithm;
+	Rule *m_rule;
 
 	QList<AbstractAlgorithmFactory *> m_factory;
 };

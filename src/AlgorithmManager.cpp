@@ -1,5 +1,5 @@
 /*
- *   Copyright (C) 2011 by Xiangyan Sun <wishstudio@gmail.com>
+ *   Copyright (C) 2011,2012 by Xiangyan Sun <wishstudio@gmail.com>
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as
@@ -21,21 +21,55 @@
 
 #include "AbstractAlgorithm.h"
 #include "AlgorithmManager.h"
+#include "Rule.h"
 
 K_GLOBAL_STATIC(AlgorithmManager, globalAlgorithmManager)
+
+AlgorithmManager::AlgorithmManager()
+{
+	m_rule = NULL;
+	m_algorithm = NULL;
+}
 
 AlgorithmManager *AlgorithmManager::self()
 {
 	return globalAlgorithmManager;
 }
 
+void AlgorithmManager::setRule(Rule *rule)
+{
+	if (self()->m_rule)
+		delete self()->m_rule;
+	self()->m_rule = rule;
+	if (self()->m_algorithm && !self()->m_algorithm->acceptRule(rule))
+	{
+		delete self()->m_algorithm;
+		self()->m_algorithm = NULL;
+	}
+	if (!self()->m_algorithm)
+	{
+		foreach (AbstractAlgorithmFactory *factory, self()->m_factory)
+		{
+			// TODO: Optimization
+			AbstractAlgorithm *algorithm = factory->createAlgorithm();
+			if (algorithm->acceptRule(rule))
+			{
+				connect(algorithm, SIGNAL(rectChanged()), self(), SIGNAL(rectChanged()));
+				connect(algorithm, SIGNAL(gridChanged()), self(), SIGNAL(gridChanged()));
+				self()->m_algorithm = algorithm;
+				break;
+			}
+			delete algorithm;
+		}
+		if (!self()->m_algorithm)
+			qFatal("No algorithm supports rule %s.", qPrintable(rule->string()));
+	}
+	emit self()->ruleChanged();
+}
+
 void AlgorithmManager::registerAlgorithm(AbstractAlgorithmFactory *algorithmFactory)
 {
 	self()->m_factory.append(algorithmFactory);
-	// TODO
-	self()->m_algorithm = algorithmFactory->createAlgorithm();
-	connect(self()->m_algorithm, SIGNAL(rectChanged()), self(), SIGNAL(rectChanged()));
-	connect(self()->m_algorithm, SIGNAL(gridChanged()), self(), SIGNAL(gridChanged()));
 }
 
 void AlgorithmManager::runStep()

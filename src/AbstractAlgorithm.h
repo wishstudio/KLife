@@ -1,5 +1,5 @@
 /*
- *   Copyright (C) 2011 by Xiangyan Sun <wishstudio@gmail.com>
+ *   Copyright (C) 2011,2012 by Xiangyan Sun <wishstudio@gmail.com>
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as
@@ -26,12 +26,17 @@
 #include "DataChannel.h"
 
 class CanvasPainter;
+class Rule;
 class AbstractAlgorithm: public QThread, public DataReceiver
 {
 	Q_OBJECT
 
 public:
+	virtual ~AbstractAlgorithm() {}
+
 	virtual QString name() = 0;
+	virtual bool acceptRule(Rule *rule) = 0;
+
 	virtual int grid(const BigInteger &x, const BigInteger &y) = 0;
 	virtual void setGrid(const BigInteger &x, const BigInteger &y, int state) = 0;
 	virtual void clearGrid() = 0;

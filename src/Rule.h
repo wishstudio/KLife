@@ -1,5 +1,5 @@
 /*
- *   Copyright (C) 2011,2012 by Xiangyan Sun <wishstudio@gmail.com>
+ *   Copyright (C) 2012 by Xiangyan Sun <wishstudio@gmail.com>
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as
@@ -17,35 +17,21 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-#ifndef MAINWINDOW_H
-#define MAINWINDOW_H
+#ifndef RULE_H
+#define RULE_H
 
-#include <KXmlGuiWindow>
+#include <QString>
 
-class QLabel;
-class BigInteger;
-class Editor;
-class MainWindow: public KXmlGuiWindow
+class Rule
 {
-	Q_OBJECT
-
 public:
-	MainWindow(QWidget *parent = 0);
+	enum RuleType {Life};
 
-public slots:
-	void coordinateChanged(const BigInteger &x, const BigInteger &y);
-	void gridChanged();
-	void ruleChanged();
-	void newAction();
-	void openAction();
+	virtual ~Rule() {}
 
-private:
-	void setupActions();
-
-	QLabel *m_coordinate_x, *m_coordinate_y;
-	QLabel *m_generation, *m_population;
-	QLabel *m_rule, *m_algorithm;
-	Editor *m_editor;
+	virtual RuleType type() const = 0;
+	virtual QString name() const = 0;
+	virtual QString string() const = 0;
 };
 
 #endif
