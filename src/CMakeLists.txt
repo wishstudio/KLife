@@ -3,7 +3,7 @@ project(KLife)
 find_package(KDE4 REQUIRED)
 find_package(GMP REQUIRED)
 
-macro_log_feature(GMP_FOUND "GMP" "The GNU Multiple Precision Arithmetic Library" "http://gmplib.org/" ${GMP_REQUIRED} "" "Required for building KCalc.")
+macro_log_feature(GMP_FOUND "GMP" "The GNU Multiple Precision Arithmetic Library" "http://gmplib.org/" ${GMP_REQUIRED} "" "Required for building KLife.")
 
 include(CheckTypeSize)
 

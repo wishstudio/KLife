@@ -37,7 +37,7 @@ public:
 	void drawGridLine();
 
 	// This function is very time consuming
-	// So trying inline for some speed improvement
+	// So try inlining for some speed improvements
 	inline void drawGrid(int x, int y, int state)
 	{
 		m_data[y * m_w + x] = state? qRgb(0xFF, 0xFF, 0xFF): qRgb(0x30, 0x30, 0x30);
