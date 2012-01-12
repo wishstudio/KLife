@@ -52,14 +52,19 @@ public:
 	inline void set(int x, int y, int state)
 	{
 		if (state)
-			SET_BIT(data, x * Block::SIZE + y);
+			SET_BIT(data, y * Block::SIZE + x);
 		else
-			CLR_BIT(data, x * Block::SIZE + y);
+			CLR_BIT(data, y * Block::SIZE + x);
 	}
 
 	inline int get(int x, int y) const
 	{
-		return TEST_BIT(data, x * Block::SIZE + y) > 0;
+		return TEST_BIT(data, y * Block::SIZE + x) > 0;
+	}
+
+	inline int getRow(int y) const
+	{
+		return (data >> (y * Block::SIZE)) & (BIT(Block::SIZE, quint64) - 1);
 	}
 
 private:
@@ -727,39 +732,17 @@ void TreeLife::runNode(Node *&p, Node *node, Node *up, Node *down, Node *left, N
 			p = reinterpret_cast<Node *>(block);
 			const int dx[8] = {-1,  0,  1, 1, 1, 0, -1, -1};
 			const int dy[8] = {-1, -1, -1, 0, 1, 1,  1,  0};
+			quint64 data[Block::SIZE + 2];
+			data[0] = (bupright->get(0, Block::SIZE - 1) << (Block::SIZE + 1)) | (bup->getRow(Block::SIZE - 1) << 1) | bupleft->get(Block::SIZE - 1, Block::SIZE - 1);
+			for (size_t i = 0; i < Block::SIZE; i++)
+				data[i + 1] = (bright->get(0, i) << (Block::SIZE + 1)) | (bnode->getRow(i) << 1) | bleft->get(Block::SIZE - 1, i);
+			data[Block::SIZE + 1] = (bdownright->get(0, 0) << (Block::SIZE + 1)) | (bdown->getRow(0) << 1) | bdownleft->get(Block::SIZE - 1, 0);
 			for (size_t x = 0; x < Block::SIZE; x++)
 				for (size_t y = 0; y < Block::SIZE; y++)
 				{
 					int n = 0;
 					for (int d = 0; d < 8; d++)
-					{
-						int sx = static_cast<int>(x) + dx[d], sy = static_cast<int>(y) + dy[d];
-						if (sy < 0)
-						{
-							if (sx < 0)
-								n += bupleft->get(Block::SIZE - 1, Block::SIZE - 1);
-							else if (sx >= static_cast<int>(Block::SIZE))
-								n += bupright->get(0, Block::SIZE - 1);
-							else
-								n += bup->get(sx, Block::SIZE - 1);
-						}
-						else if (sy >= static_cast<int>(Block::SIZE))
-						{
-							if (sx < 0)
-								n += bdownleft->get(Block::SIZE - 1, 0);
-							else if (sx >= static_cast<int>(Block::SIZE))
-								n += bdownright->get(0, 0);
-							else
-								n += bdown->get(sx, 0);
-						}
-						else if (sx < 0)
-							n += bleft->get(Block::SIZE - 1, sy);
-						else if (sx >= static_cast<int>(Block::SIZE))
-							n += bright->get(0, sy);
-						else
-							n += bnode->get(sx, sy);
-					}
-					//block->set(x, y, ((n == 3) || (bnode->get(x, y) && n == 2)));
+						n += TEST_BIT(data[y + 1 + dy[d]], x + 1 + dx[d]) > 0;
 					block->set(x, y, reinterpret_cast<RuleLife *>(AlgorithmManager::rule())->nextState(bnode->get(x, y), n));
 					block->population += block->get(x, y) > 0;
 					if (block->get(x, y) != bnode->get(x, y))
