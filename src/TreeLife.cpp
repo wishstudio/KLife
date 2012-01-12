@@ -397,6 +397,7 @@ void TreeLife::clearGrid()
 	m_depth = Block::DEPTH + 2;
 	m_root->ul = m_root->ur = m_root->dl = m_root->dr = emptyNode(m_depth - 1);
 	m_root->flag = 0;
+	m_root->population = 0;
 	m_x = 0;
 	m_y = 0;
 	m_generation = 0;
