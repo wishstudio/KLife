@@ -17,8 +17,8 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-#ifndef NAIVELIFE_H
-#define NAIVELIFE_H
+#ifndef TreeLife_H
+#define TreeLife_H
 
 #include <QVector>
 
@@ -30,15 +30,15 @@ struct Block;
 struct Node;
 class QMutex;
 class CanvasPainter;
-class NaiveLife: public AbstractAlgorithm, private MemoryManager
+class TreeLife: public AbstractAlgorithm, private MemoryManager
 {
 	Q_OBJECT
 
 public:
-	NaiveLife();
-	virtual ~NaiveLife();
+	TreeLife();
+	virtual ~TreeLife();
 
-	virtual QString name() { return "NaiveLife"; }
+	virtual QString name() { return "TreeLife"; }
 	virtual void setReceiveRect(const BigInteger &x, const BigInteger &y, quint64 w, quint64 h);
 	virtual void receive(DataChannel *channel);
 	virtual int grid(const BigInteger &x, const BigInteger &y);

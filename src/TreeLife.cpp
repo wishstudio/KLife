@@ -21,10 +21,10 @@
 
 #include "AlgorithmManager.h"
 #include "CanvasPainter.h"
-#include "NaiveLife.h"
+#include "TreeLife.h"
 #include "Utils.h"
 
-REGISTER_ALGORITHM(NaiveLife)
+REGISTER_ALGORITHM(TreeLife)
 
 // node flags
 #define CHANGED       0  // This node has changed since last iteration
@@ -45,21 +45,24 @@ public:
 
 	inline void clear()
 	{
-		memset(data, 0, sizeof data);
+		data = 0;
 	}
 
 	inline void set(int x, int y, int state)
 	{
-		data[y][x] = state;
+		if (state)
+			SET_BIT(data, x * Block::SIZE + y);
+		else
+			CLR_BIT(data, x * Block::SIZE + y);
 	}
 
 	inline int get(int x, int y) const
 	{
-		return data[y][x];
+		return TEST_BIT(data, x * Block::SIZE + y) > 0;
 	}
 
 private:
-	uchar data[Block::SIZE][Block::SIZE];
+	quint64 data;
 };
 
 // 00 01
@@ -75,7 +78,7 @@ struct Node
 	quint64 population;
 };
 
-NaiveLife::NaiveLife()
+TreeLife::TreeLife()
 	: m_running(false), m_readLock(new QMutex()), m_writeLock(new QMutex()), m_x(0), m_y(0), m_generation(0)
 {
 	setAcceptInfinity(false);
@@ -89,7 +92,7 @@ NaiveLife::NaiveLife()
 	m_root = newNode(m_depth);
 }
 
-NaiveLife::~NaiveLife()
+TreeLife::~TreeLife()
 {
 	delete m_readLock;
 	delete m_writeLock;
@@ -98,7 +101,7 @@ NaiveLife::~NaiveLife()
 		deleteNode(m_emptyNode[i], i);
 }
 
-void NaiveLife::setReceiveRect(const BigInteger &x, const BigInteger &y, quint64 w, quint64 h)
+void TreeLife::setReceiveRect(const BigInteger &x, const BigInteger &y, quint64 w, quint64 h)
 {
 	mc_x = x;
 	mc_y = y;
@@ -106,7 +109,7 @@ void NaiveLife::setReceiveRect(const BigInteger &x, const BigInteger &y, quint64
 	mc_h = h;
 }
 
-void NaiveLife::receive(DataChannel *channel)
+void TreeLife::receive(DataChannel *channel)
 {
 	m_writeLock->lock();
 	m_readLock->lock();
@@ -130,7 +133,7 @@ void NaiveLife::receive(DataChannel *channel)
 	emit gridChanged();
 }
 
-void NaiveLife::receiveGrid(DataChannel *channel, Node *&node_ul, Node *&node_ur, Node *&node_dl, Node *&node_dr, bool ok_ur, bool ok_dl, bool ok_dr, size_t depth, size_t endDepth, const BigInteger &x, const BigInteger &y)
+void TreeLife::receiveGrid(DataChannel *channel, Node *&node_ul, Node *&node_ur, Node *&node_dl, Node *&node_dr, bool ok_ur, bool ok_dl, bool ok_dr, size_t depth, size_t endDepth, const BigInteger &x, const BigInteger &y)
 {
 	if (depth == endDepth)
 	{
@@ -211,7 +214,7 @@ void NaiveLife::receiveGrid(DataChannel *channel, Node *&node_ul, Node *&node_ur
 	}
 }
 
-inline void NaiveLife::receiveGrid(DataChannel *channel, Node *&node_ul, Node *&node_ur, Node *&node_dl, Node *&node_dr, size_t depth, quint64 x, quint64 y, int &state, quint64 &cnt)
+inline void TreeLife::receiveGrid(DataChannel *channel, Node *&node_ul, Node *&node_ur, Node *&node_dl, Node *&node_dr, size_t depth, quint64 x, quint64 y, int &state, quint64 &cnt)
 {
 	quint64 len = Q_UINT64_C(1) << depth;
 	if (y < len)
@@ -238,7 +241,7 @@ inline void NaiveLife::receiveGrid(DataChannel *channel, Node *&node_ul, Node *&
 	}
 }
 
-void NaiveLife::receiveGrid(DataChannel *channel, Node *&node, size_t depth, quint64 x, quint64 y, int &state, quint64 &cnt)
+void TreeLife::receiveGrid(DataChannel *channel, Node *&node, size_t depth, quint64 x, quint64 y, int &state, quint64 &cnt)
 {
 	if (depth == Block::DEPTH)
 	{
@@ -297,7 +300,7 @@ void NaiveLife::receiveGrid(DataChannel *channel, Node *&node, size_t depth, qui
 	}
 }
 
-int NaiveLife::grid(const BigInteger &x, const BigInteger &y)
+int TreeLife::grid(const BigInteger &x, const BigInteger &y)
 {
 	m_readLock->lock();
 	BigInteger my_x = x - m_x, my_y = y - m_y;
@@ -325,7 +328,7 @@ int NaiveLife::grid(const BigInteger &x, const BigInteger &y)
 	return ret;
 }
 
-void NaiveLife::setGrid(const BigInteger &x, const BigInteger &y, int state)
+void TreeLife::setGrid(const BigInteger &x, const BigInteger &y, int state)
 {
 	if (m_running)
 		return;
@@ -362,22 +365,22 @@ void NaiveLife::setGrid(const BigInteger &x, const BigInteger &y, int state)
 	else if (!block->get(sx, sy) && state)
 		block->population++;
 	block->set(sx, sy, state);
-	block->flag |= BIT(CHANGED);
+	SET_BIT(block->flag, CHANGED);
 	if (sy == 0)
-		block->flag |= BIT(UP_CHANGED);
+		SET_BIT(block->flag, UP_CHANGED);
 	if (sy == Block::SIZE - 1)
-		block->flag |= BIT(DOWN_CHANGED);
+		SET_BIT(block->flag, DOWN_CHANGED);
 	if (sx == 0)
-		block->flag |= BIT(LEFT_CHANGED);
+		SET_BIT(block->flag, LEFT_CHANGED);
 	if (sx == Block::SIZE - 1)
-		block->flag |= BIT(RIGHT_CHANGED);
+		SET_BIT(block->flag, RIGHT_CHANGED);
 	while (++depth <= m_depth)
 		computeNodeInfo(stack[depth], depth);
 	m_writeLock->unlock();
 	emit gridChanged();
 }
 
-void NaiveLife::clearGrid()
+void TreeLife::clearGrid()
 {
 	m_writeLock->lock();
 	m_readLock->lock();
@@ -396,23 +399,23 @@ void NaiveLife::clearGrid()
 	emit gridChanged();
 }
 
-BigInteger NaiveLife::generation() const
+BigInteger TreeLife::generation() const
 {
 	return m_generation;
 }
 
-BigInteger NaiveLife::population() const
+BigInteger TreeLife::population() const
 {
 	return m_root->population;
 }
 
-void NaiveLife::rectChange(const BigInteger &, const BigInteger &, const BigInteger &, const BigInteger &)
+void TreeLife::rectChange(const BigInteger &, const BigInteger &, const BigInteger &, const BigInteger &)
 {
 	emit rectChanged();
 	clearGrid();
 }
 
-void NaiveLife::expand()
+void TreeLife::expand()
 {
 	{
 		Node *tmp = newNode(m_depth);
@@ -445,7 +448,7 @@ void NaiveLife::expand()
 	m_depth++;
 }
 
-inline void NaiveLife::computeNodeInfo(Node *node, size_t depth)
+inline void TreeLife::computeNodeInfo(Node *node, size_t depth)
 {
 	int ul_flag, ur_flag, dl_flag, dr_flag;
 	if (depth == Block::DEPTH + 1)
@@ -482,7 +485,7 @@ inline void NaiveLife::computeNodeInfo(Node *node, size_t depth)
 	node->flag |= TEST_BIT(dr_flag, RIGHT_CHANGED);
 }
 
-inline Block *NaiveLife::newBlock()
+inline Block *TreeLife::newBlock()
 {
 	Block *ret = newObject<Block>();
 	ret->clear();
@@ -491,7 +494,7 @@ inline Block *NaiveLife::newBlock()
 	return ret;
 }
 
-inline Node *NaiveLife::newNode(size_t depth)
+inline Node *TreeLife::newNode(size_t depth)
 {
 	Node *ret = newObject<Node>();
 	ret->ul = ret->ur = ret->dl = ret->dr = emptyNode(depth - 1);
@@ -500,7 +503,7 @@ inline Node *NaiveLife::newNode(size_t depth)
 	return ret;
 }
 
-Node *&NaiveLife::emptyNode(size_t depth)
+Node *&TreeLife::emptyNode(size_t depth)
 {
 	if (static_cast<size_t>(m_emptyNode.size()) > depth)
 		return m_emptyNode[depth];
@@ -511,7 +514,7 @@ Node *&NaiveLife::emptyNode(size_t depth)
 	}
 }
 
-void NaiveLife::deleteNode(Node *node, size_t depth)
+void TreeLife::deleteNode(Node *node, size_t depth)
 {
 	if (node == emptyNode(depth))
 		return;
@@ -545,7 +548,7 @@ void NaiveLife::deleteNode(Node *node, size_t depth)
 // Because 2^(level-1) is larger than w and h so the needed childs of 4 nodes
 // are unique, when depth > endDepth
 // After walkdown(), we can guarantee all the coordinates fit in ints.
-void NaiveLife::paint(CanvasPainter *painter, const BigInteger &x, const BigInteger &y, int w, int h, size_t scale)
+void TreeLife::paint(CanvasPainter *painter, const BigInteger &x, const BigInteger &y, int w, int h, size_t scale)
 {
 	m_readLock->lock();
 
@@ -647,7 +650,7 @@ void NaiveLife::paint(CanvasPainter *painter, const BigInteger &x, const BigInte
 	m_readLock->unlock();
 }
 
-inline void NaiveLife::drawNode(CanvasPainter *painter, Node *node_ul, Node *node_ur, Node *node_dl, Node *node_dr, int x1, int y1, int x2, int y2, size_t depth, size_t scale, int offset_x, int offset_y)
+inline void TreeLife::drawNode(CanvasPainter *painter, Node *node_ul, Node *node_ur, Node *node_dl, Node *node_dr, int x1, int y1, int x2, int y2, size_t depth, size_t scale, int offset_x, int offset_y)
 {
 	int len = 1 << depth;
 	if (x1 < len && y1 < len)
@@ -660,7 +663,7 @@ inline void NaiveLife::drawNode(CanvasPainter *painter, Node *node_ul, Node *nod
 		drawNode(painter, node_dr, qMax(x1 - len, 0), qMax(y1 - len, 0), x2 - len, y2 - len, depth, scale, offset_x + len, offset_y + len);
 }
 
-void NaiveLife::drawNode(CanvasPainter *painter, Node *node, int x1, int y1, int x2, int y2, size_t depth, size_t scale, int offset_x, int offset_y)
+void TreeLife::drawNode(CanvasPainter *painter, Node *node, int x1, int y1, int x2, int y2, size_t depth, size_t scale, int offset_x, int offset_y)
 {
 	if (depth + scale == Block::DEPTH)
 	{
@@ -691,12 +694,12 @@ void NaiveLife::drawNode(CanvasPainter *painter, Node *node, int x1, int y1, int
 		drawNode(painter, node->ul, node->ur, node->dl, node->dr, x1, y1, x2, y2, depth - 1, scale, offset_x, offset_y);
 }
 
-void NaiveLife::runStep()
+void TreeLife::runStep()
 {
 	start();
 }
 
-void NaiveLife::runNode(Node *&p, Node *node, Node *up, Node *down, Node *left, Node *right, Node *upleft, Node *upright, Node *downleft, Node *downright, size_t depth)
+void TreeLife::runNode(Node *&p, Node *node, Node *up, Node *down, Node *left, Node *right, Node *upleft, Node *upright, Node *downleft, Node *downright, size_t depth)
 {
 	if (depth == Block::DEPTH)
 	{
@@ -804,7 +807,7 @@ void NaiveLife::runNode(Node *&p, Node *node, Node *up, Node *down, Node *left, 
 	}
 }
 
-void NaiveLife::run()
+void TreeLife::run()
 {
 	m_running = true;
 	m_writeLock->lock();

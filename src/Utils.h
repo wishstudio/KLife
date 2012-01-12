@@ -21,10 +21,10 @@
 #define UTILS_H
 
 // Bit manipulation utils
-#define BIT(b) (1 << (b))
-#define TEST_BIT(x, b) ((x) & BIT(b))
-#define SET_BIT(x, b) ((x) = (x) | BIT(b))
-#define CLR_BIT(x, b) ((x) = (x) & ~BIT(b))
+#define BIT(b, type) (static_cast<type>(1) << static_cast<type>(b))
+#define TEST_BIT(x, b) ((x) & BIT(b, __typeof__(x)))
+#define SET_BIT(x, b) ((x) |= BIT(b, __typeof__(x)))
+#define CLR_BIT(x, b) ((x) &= ~BIT(b, __typeof__(x)))
 
 extern int bitlen(int num);
 
