@@ -42,7 +42,7 @@ public:
 	static const size_t SIZE = 1 << DEPTH;
 
 	int flag;
-	quint64 population;
+	int population;
 
 	inline void clear()
 	{
