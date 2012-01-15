@@ -64,10 +64,8 @@ struct Block
 		return 5 * c0 + 17 * c1 + 257 * c2 + 65537 * c3;
 	}
 
-	static inline void runStep(Rule *rule, size_t step, unsigned char &rul, unsigned char &rur, unsigned char &rdl, unsigned char &rdr, Block *bul, Block *bur, Block *bdl, Block *bdr)
+	static inline void runStep(Rule *rule, unsigned char &rul, unsigned char &rur, unsigned char &rdl, unsigned char &rdr, Block *bul, Block *bur, Block *bdl, Block *bdr)
 	{
-		// TODO
-		Q_UNUSED(step);
 		if (rule->type() == Rule::Life)
 		{
 			// * * * 0
@@ -94,6 +92,12 @@ struct Block
 			// 0 * * *
 			int cdr = bul->dr + bur->dl + bur->dr + bdl->ur + bdl->dr + bdr->ur + bdr->dl + bdr->dr;
 			rdr = reinterpret_cast<RuleLife *>(rule)->nextState(bdr->ul, cdr);
+		}
+		else
+		{
+			// Should not run into here actually
+			// Just avoids gcc warning of uninitialized variables
+			rul = rur = rdl = rdr = 0;
 		}
 	}
 };
@@ -171,13 +175,15 @@ HashLife::HashLife()
 	  m_blockHash(new HashTable<Block>()), m_nodeHash(new HashTable<Node>()),
 	  m_x(0), m_y(0), m_generation(0)
 {
+	m_increment = 0; // TODO
 	Node *e = reinterpret_cast<Node *>(m_blockHash->get(0, 0, 0, 0));
 	m_emptyNode.resize(Block::DEPTH + 1);
 	for (size_t i = 0; i < Block::DEPTH; i++)
 		m_emptyNode[i] = NULL;
 	m_emptyNode[Block::DEPTH] = e;
-	m_depth = Block::DEPTH + 1;
 	m_root = m_nodeHash->get(e, e, e, e);
+	m_depth = Block::DEPTH + 1;
+	expand(); // run() requires m_depth >= Block::DEPTH + 2
 }
 
 HashLife::~HashLife()
@@ -284,6 +290,11 @@ void HashLife::expand()
 	m_depth++;
 }
 
+void HashLife::runStep()
+{
+	start();
+}
+
 Node *HashLife::runNode(Node *node, size_t depth)
 {
 	if (node->result)
@@ -291,22 +302,21 @@ Node *HashLife::runNode(Node *node, size_t depth)
 	if (depth == Block::DEPTH + 1)
 	{
 		__typeof__(Block::child[0]) nul, nur, ndl, ndr;
-		Block::runStep(AlgorithmManager::rule(), 1, nul, nur, ndl, ndr, reinterpret_cast<Block *>(node->ul), reinterpret_cast<Block *>(node->ur), reinterpret_cast<Block *>(node->dl), reinterpret_cast<Block *>(node->dr));
-		// TODO: save result to hash table and return
-		return NULL;
+		Block::runStep(AlgorithmManager::rule(), nul, nur, ndl, ndr, reinterpret_cast<Block *>(node->ul), reinterpret_cast<Block *>(node->ur), reinterpret_cast<Block *>(node->dl), reinterpret_cast<Block *>(node->dr));
+		return node->result = reinterpret_cast<Node *>(m_blockHash->get(nul, nur, ndl, ndr));
 	}
 	else
 	{
 		// HashLife runStep routine
+		// 0 0 0 0 0 0 0 0
+		// 0 a a b b c c 0
+		// 0 a A B B C c 0
+		// 0 d D E E F f 0
+		// 0 d D E E F f 0
+		// 0 g G H H I i 0
+		// 0 g g h h i i 0
+		// 0 0 0 0 0 0 0 0
 		// 1. Calculate 9 sub-nodes
-		// 0 0 0 0 0 0 0 0
-		// 0 a a b b c c 0
-		// 0 a a b b c c 0
-		// 0 d d e e f f 0
-		// 0 d d e e f f 0
-		// 0 g g h h i i 0
-		// 0 g g h h i i 0
-		// 0 0 0 0 0 0 0 0
 		Node *a = runNode(node->ul, depth - 1);
 		Node *b = runNode(m_nodeHash->get(node->ul->ur, node->ur->ul, node->ul->dr, node->ur->dl), depth - 1);
 		Node *c = runNode(node->ur, depth - 1);
@@ -316,26 +326,83 @@ Node *HashLife::runNode(Node *node, size_t depth)
 		Node *g = runNode(node->dl, depth - 1);
 		Node *h = runNode(m_nodeHash->get(node->dl->ur, node->dr->ul, node->dl->dr, node->dr->dl), depth - 1);
 		Node *i = runNode(node->dr, depth - 1);
-		if (m_increment >= depth) // no need to do more increment
+		if (m_increment + 2 < depth) // no need to do more increment
 		{
+			if (depth == Block::DEPTH + 2) // 9 sub-nodes are actually blocks
+			{
+				Block *A = reinterpret_cast<Block *>(a);
+				Block *B = reinterpret_cast<Block *>(b);
+				Block *C = reinterpret_cast<Block *>(c);
+				Block *D = reinterpret_cast<Block *>(d);
+				Block *E = reinterpret_cast<Block *>(e);
+				Block *F = reinterpret_cast<Block *>(f);
+				Block *G = reinterpret_cast<Block *>(g);
+				Block *H = reinterpret_cast<Block *>(h);
+				Block *I = reinterpret_cast<Block *>(i);
+				Node *nul = reinterpret_cast<Node *>(m_blockHash->get(A->dr, B->dl, D->ur, E->ul));
+				Node *nur = reinterpret_cast<Node *>(m_blockHash->get(B->dr, C->dl, E->ur, F->ul));
+				Node *ndl = reinterpret_cast<Node *>(m_blockHash->get(D->dr, E->dl, G->ur, H->ul));
+				Node *ndr = reinterpret_cast<Node *>(m_blockHash->get(E->dr, F->dl, H->ur, I->ul));
+				return node->result = m_nodeHash->get(nul, nur, ndl, ndr);
+			}
 			Node *nul = m_nodeHash->get(a->dr, b->dl, d->ur, e->ul);
 			Node *nur = m_nodeHash->get(b->dr, c->dl, e->ur, f->ul);
 			Node *ndl = m_nodeHash->get(d->dr, e->dl, g->ur, h->ul);
 			Node *ndr = m_nodeHash->get(e->dr, f->dl, h->ur, i->ul);
-			return m_nodeHash->get(nul, nur, ndl, ndr);
+			return node->result = m_nodeHash->get(nul, nur, ndl, ndr);
 		}
 		// else use the full increment power
 		// 2. Calculate final RESULT
-		// 0   0  0  0  0  0
-		// 0  ul ul ur ur  0
-		// 0  ul ul ur ur  0
-		// 0  dl dl dr dr  0
-		// 0  dl dl dr dr  0
-		// 0   0  0  0  0  0
 		Node *nul = runNode(m_nodeHash->get(a, b, d, e), depth - 1);
 		Node *nur = runNode(m_nodeHash->get(b, c, e, f), depth - 1);
 		Node *ndl = runNode(m_nodeHash->get(d, e, g, h), depth - 1);
 		Node *ndr = runNode(m_nodeHash->get(e, f, h, i), depth - 1);
-		return m_nodeHash->get(nul, nur, ndl, ndr);
+		return node->result = m_nodeHash->get(nul, nur, ndl, ndr);
 	}
+}
+
+#include <QTime>
+void HashLife::run()
+{
+	QTime timer;
+	timer.start();
+	m_running = true;
+	m_writeLock->lock();
+	Node *e = emptyNode(m_depth - 2);
+	// This requires m_depth to be at least Block::DEPTH + 2
+	if ((m_root->ul->ul != e || m_root->ul->ur != e || m_root->ul->dl != e)
+		|| (m_root->ur->ul != e || m_root->ur->ur != e || m_root->ur->dr != e)
+		|| (m_root->dl->ul != e || m_root->dl->dl != e || m_root->dl->dr != e)
+		|| (m_root->dr->ur != e || m_root->dr->dl != e || m_root->dr->dr != e))
+	{
+		m_readLock->lock();
+		expand();
+		m_readLock->unlock();
+	}
+	if (m_increment + 2 > m_depth)
+	{
+		m_readLock->lock();
+		for (size_t i = m_depth; i < m_increment + 2; i++)
+			expand();
+		m_readLock->unlock();
+	}
+	Node *nroot = runNode(m_root, m_depth);
+	// The depth of RESULT is exactly one smaller than m_depth, expand it
+	// This is nearly identical to code in expand()
+	// except this do nothing with m_x and m_y
+	// since they are already correct
+	e = emptyNode(m_depth - 2); // m_depth could be changed due to expand() so we recalculate
+	Node *nul = m_nodeHash->get(e, e, e, nroot->ul);
+	Node *nur = m_nodeHash->get(e, e, nroot->ur, e);
+	Node *ndl = m_nodeHash->get(e, nroot->dl, e, e);
+	Node *ndr = m_nodeHash->get(nroot->dr, e, e, e);
+	Node *new_root = m_nodeHash->get(nul, nur, ndl, ndr);
+	m_readLock->lock();
+	m_root = new_root;
+	m_readLock->unlock();
+	m_writeLock->unlock();
+	m_generation += BigInteger::exp2(m_increment);
+	m_running = false;
+	emit gridChanged();
+	qDebug() << timer.elapsed();
 }

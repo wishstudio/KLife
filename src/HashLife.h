@@ -50,9 +50,10 @@ public:
 	virtual BigInteger generation() const;
 	virtual BigInteger population() const;
 	virtual void paint(CanvasPainter *painter, const BigInteger &x, const BigInteger &y, int w, int h, size_t scale);
-	virtual void runStep() {}
+	virtual void runStep();
 
 private:
+	virtual void run();
 	void rectChange(const BigInteger &x, const BigInteger &y, const BigInteger &w, const BigInteger &h) {}
 	Node *emptyNode(size_t depth);
 	void expand();
