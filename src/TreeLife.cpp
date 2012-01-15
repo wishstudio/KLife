@@ -63,7 +63,7 @@ public:
 		return TEST_BIT(data, y * Block::SIZE + x) > 0;
 	}
 
-	inline bool visible() const
+	inline bool visible(TreeLife *, size_t) const
 	{
 		return population > 0;
 	}
@@ -89,7 +89,7 @@ struct Node
 	int flag;
 	quint64 population;
 
-	inline bool visible()
+	inline bool visible(TreeLife *, size_t)
 	{
 		return population > 0;
 	}
@@ -559,7 +559,7 @@ void TreeLife::deleteNode(Node *node, size_t depth)
 void TreeLife::paint(CanvasPainter *painter, const BigInteger &x, const BigInteger &y, int w, int h, size_t scale)
 {
 	m_readLock->lock();
-	treePaint<Block, Node>(painter, x, y, w, h, scale, m_x, m_y, m_depth, m_root, emptyNode(m_depth));
+	treePaint<TreeLife, Block, Node>(this, painter, x, y, w, h, scale, m_x, m_y, m_depth, m_root, emptyNode(m_depth));
 	m_readLock->unlock();
 }
 

@@ -46,8 +46,8 @@ void treePaintNode(CanvasPainter *painter, Node *node, int x1, int y1, int x2, i
 // Because 2^(level-1) is larger than w and h so the needed childs of 4 nodes
 // are unique, when depth > endDepth
 // After this walkdown, we can guarantee all the coordinates fit in ints.
-template<typename Block, typename Node>
-inline void treePaint(CanvasPainter *painter, const BigInteger &x, const BigInteger &y, int w, int h, size_t scale, const BigInteger &m_x, const BigInteger &m_y, size_t m_depth, Node *m_root, Node *depth_emptyNode)
+template <typename Algorithm, typename Block, typename Node>
+inline void treePaint(Algorithm *algorithm, CanvasPainter *painter, const BigInteger &x, const BigInteger &y, int w, int h, size_t scale, const BigInteger &m_x, const BigInteger &m_y, size_t m_depth, Node *m_root, Node *depth_emptyNode)
 {
 	// Fill black background
 	painter->fillBlack();
@@ -75,7 +75,7 @@ inline void treePaint(CanvasPainter *painter, const BigInteger &x, const BigInte
 	}
 
 	if (m_depth < scale)
-		treePaintNode<Block, Node>(painter, m_root, 0, 0, 0, 0, 0, scale, offset_x, offset_y);
+		treePaintNode<Algorithm, Block, Node>(algorithm, painter, m_root, 0, 0, 0, 0, 0, scale, offset_x, offset_y);
 	else
 	{
 		BigInteger len = BigInteger::exp2(m_depth - scale);
@@ -140,32 +140,32 @@ inline void treePaint(CanvasPainter *painter, const BigInteger &x, const BigInte
 
 		// Step 2
 		int sx1 = x1.lowbits<int>(depth), sy1 = y1.lowbits<int>(depth);
-		treePaintNode<Block, Node>(painter, node_ul, node_ur, node_dl, node_dr, sx1, sy1, sx1 + w - 1, sy1 + h - 1, depth, scale, offset_x - sx1, offset_y - sy1);
+		treePaintNode<Algorithm, Block, Node>(algorithm, painter, node_ul, node_ur, node_dl, node_dr, sx1, sy1, sx1 + w - 1, sy1 + h - 1, depth, scale, offset_x - sx1, offset_y - sy1);
 	}
 }
 
-template <typename Block, typename Node>
-inline void treePaintNode(CanvasPainter *painter, Node *node_ul, Node *node_ur, Node *node_dl, Node *node_dr, int x1, int y1, int x2, int y2, size_t depth, size_t scale, int offset_x, int offset_y)
+template <typename Algorithm, typename Block, typename Node>
+inline void treePaintNode(Algorithm *algorithm, CanvasPainter *painter, Node *node_ul, Node *node_ur, Node *node_dl, Node *node_dr, int x1, int y1, int x2, int y2, size_t depth, size_t scale, int offset_x, int offset_y)
 {
 	int len = 1 << depth;
 	if (x1 < len && y1 < len)
-		treePaintNode<Block, Node>(painter, node_ul, x1, y1, qMin(x2, len - 1), qMin(y2, len - 1), depth, scale, offset_x, offset_y);
+		treePaintNode<Algorithm, Block, Node>(algorithm, painter, node_ul, x1, y1, qMin(x2, len - 1), qMin(y2, len - 1), depth, scale, offset_x, offset_y);
 	if (x2 >= len && y1 < len)
-		treePaintNode<Block, Node>(painter, node_ur, qMax(x1 - len, 0), y1, x2 - len, qMin(y2, len - 1), depth, scale, offset_x + len, offset_y);
+		treePaintNode<Algorithm, Block, Node>(algorithm, painter, node_ur, qMax(x1 - len, 0), y1, x2 - len, qMin(y2, len - 1), depth, scale, offset_x + len, offset_y);
 	if (x1 < len && y2 >= len)
-		treePaintNode<Block, Node>(painter, node_dl, x1, qMax(y1 - len, 0), qMin(x2, len - 1), y2 - len, depth, scale, offset_x, offset_y + len);
+		treePaintNode<Algorithm, Block, Node>(algorithm, painter, node_dl, x1, qMax(y1 - len, 0), qMin(x2, len - 1), y2 - len, depth, scale, offset_x, offset_y + len);
 	if (x2 >= len && y2 >= len)
-		treePaintNode<Block, Node>(painter, node_dr, qMax(x1 - len, 0), qMax(y1 - len, 0), x2 - len, y2 - len, depth, scale, offset_x + len, offset_y + len);
+		treePaintNode<Algorithm, Block, Node>(algorithm, painter, node_dr, qMax(x1 - len, 0), qMax(y1 - len, 0), x2 - len, y2 - len, depth, scale, offset_x + len, offset_y + len);
 }
 
-template <typename Block, typename Node>
-void treePaintNode(CanvasPainter *painter, Node *node, int x1, int y1, int x2, int y2, size_t depth, size_t scale, int offset_x, int offset_y)
+template <typename Algorithm, typename Block, typename Node>
+void treePaintNode(Algorithm *algorithm, CanvasPainter *painter, Node *node, int x1, int y1, int x2, int y2, size_t depth, size_t scale, int offset_x, int offset_y)
 {
 	if (depth + scale == Block::DEPTH)
 	{
 		Block *block = reinterpret_cast<Block *>(node);
 		if (depth == 0)
-			painter->drawGrid(offset_x + x1, offset_y + y1, block->visible());
+			painter->drawGrid(offset_x + x1, offset_y + y1, block->visible(algorithm, depth));
 		else
 		{
 			for (int x = x1; x <= x2; x++)
@@ -186,9 +186,9 @@ void treePaintNode(CanvasPainter *painter, Node *node, int x1, int y1, int x2, i
 		}
 	}
 	else if (depth == 0)
-		painter->drawGrid(offset_x + x1, offset_y + y1, node->visible());
+		painter->drawGrid(offset_x + x1, offset_y + y1, node->visible(algorithm, depth));
 	else
-		treePaintNode<Block, Node>(painter, node->ul, node->ur, node->dl, node->dr, x1, y1, x2, y2, depth - 1, scale, offset_x, offset_y);
+		treePaintNode<Algorithm, Block, Node>(algorithm, painter, node->ul, node->ur, node->dl, node->dr, x1, y1, x2, y2, depth - 1, scale, offset_x, offset_y);
 }
 
 #undef ul
