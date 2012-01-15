@@ -276,7 +276,7 @@ void HashLife::expand()
 	Node *nul = m_nodeHash->get(e, e, e, m_root->ul);
 	Node *nur = m_nodeHash->get(e, e, m_root->ur, e);
 	Node *ndl = m_nodeHash->get(e, m_root->dl, e, e);
-	Node *ndr = m_nodeHash->get(m_root->ul, e, e, e);
+	Node *ndr = m_nodeHash->get(m_root->dr, e, e, e);
 	m_root = m_nodeHash->get(nul, nur, ndl, ndr);
 	BigInteger offset = BigInteger::exp2(m_depth - 1);
 	m_x -= offset;
