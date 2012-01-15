@@ -23,6 +23,7 @@
 #include "CanvasPainter.h"
 #include "RuleLife.h"
 #include "TreeLife.h"
+#include "TreeUtils.h"
 #include "Utils.h"
 
 REGISTER_ALGORITHM(TreeLife)
@@ -62,6 +63,11 @@ public:
 		return TEST_BIT(data, y * Block::SIZE + x) > 0;
 	}
 
+	inline bool visible() const
+	{
+		return population > 0;
+	}
+
 	inline int getRow(int y) const
 	{
 		return (data >> (y * Block::SIZE)) & (BIT(Block::SIZE, quint64) - 1);
@@ -82,6 +88,11 @@ struct Node
 	Node *child[4];
 	int flag;
 	quint64 population;
+
+	inline bool visible()
+	{
+		return population > 0;
+	}
 };
 
 TreeLife::TreeLife()
@@ -545,160 +556,11 @@ void TreeLife::deleteNode(Node *node, size_t depth)
 	}
 }
 
-// Magic in paint() to get rid of BigInteger manipulation:
-// We walk down and find 4 nodes cover the drawing area
-// We have to guarantee coordinate (x, y) is in node ul during the process.
-// Firstly set ul to root, and other nodes to the magic empty node, like
-//  ul  0
-//   0  0
-// Then walk down the tree, we continually divide ul into 4 smaller parts
-// Because 2^(level-1) is larger than w and h so the needed childs of 4 nodes
-// are unique, when depth > endDepth
-// After walkdown(), we can guarantee all the coordinates fit in ints.
 void TreeLife::paint(CanvasPainter *painter, const BigInteger &x, const BigInteger &y, int w, int h, size_t scale)
 {
 	m_readLock->lock();
-
-	// Fill black background
-	painter->fillBlack();
-
-	// Fit into range
-	BigInteger x1 = x - (m_x >> scale), y1 = y - (m_y >> scale), x2 = x1 + (w - 1), y2 = y1 + (h - 1);
-
-	if (x2.sgn() < 0 || (x1.sgn() > 0 && x1.bitCount() > m_depth - scale) || y2.sgn() < 0 || (y1.sgn() > 0 && y1.bitCount() > m_depth - scale))
-	{
-		m_readLock->unlock();
-		return;
-	}
-
-	// The coordinate of the upper left grid in canvas painter
-	int offset_x = 0, offset_y = 0;
-	if (x1.sgn() < 0)
-	{
-		w += x1;
-		offset_x = -x1;
-		x1 = 0;
-	}
-	if (y1.sgn() < 0)
-	{
-		h += y1;
-		offset_y = -y1;
-		y1 = 0;
-	}
-
-	if (m_depth < scale)
-		drawNode(painter, m_root, 0, 0, 0, 0, 0, scale, offset_x, offset_y);
-	else
-	{
-		BigInteger len = BigInteger::exp2(m_depth - scale);
-		if (x2.bitCount() > m_depth - scale)
-			w = len - x1;
-		if (y2.bitCount() > m_depth - scale)
-			h = len - y1;
-
-		// Step 1
-		size_t depth = m_depth - scale, endDepth = qMax<size_t>(qMax(bitlen(w), bitlen(h)), Block::DEPTH);
-		Node *node_ul = m_root, *node_ur = emptyNode(m_depth), *node_dl = emptyNode(m_depth), *node_dr = emptyNode(m_depth);
-		while (depth > endDepth)
-		{
-			switch ((y1.bit(depth - 1) << 1) | x1.bit(depth - 1))
-			{
-			case 0:
-				//  ul ur  0  0
-				//  dl dr  0  0
-				//   0  0  0  0
-				//   0  0  0  0
-				node_ur = node_ul->ur;
-				node_dl = node_ul->dl;
-				node_dr = node_ul->dr;
-				node_ul = node_ul->ul;
-				break;
-
-			case 1:
-				//   0 ul ur  0
-				//   0 dl dr  0
-				//   0  0  0  0
-				//   0  0  0  0
-				node_dl = node_ul->dr;
-				node_ul = node_ul->ur;
-				node_dr = node_ur->dl;
-				node_ur = node_ur->ul;
-				break;
-
-			case 2:
-				//   0  0  0  0
-				//  ul ur  0  0
-				//  dl dr  0  0
-				//   0  0  0  0
-				node_ur = node_ul->dr;
-				node_ul = node_ul->dl;
-				node_dr = node_dl->ur;
-				node_dl = node_dl->ul;
-				break;
-
-			case 3:
-				//   0  0  0  0
-				//   0 ul ur  0
-				//   0 dl dr  0
-				//   0  0  0  0
-				node_ul = node_ul->dr;
-				node_ur = node_ur->dl;
-				node_dl = node_dl->ur;
-				node_dr = node_dr->ul;
-				break;
-			}
-			depth--;
-		}
-
-		// Step 2
-		int sx1 = x1.lowbits<int>(depth), sy1 = y1.lowbits<int>(depth);
-		drawNode(painter, node_ul, node_ur, node_dl, node_dr, sx1, sy1, sx1 + w - 1, sy1 + h - 1, depth, scale, offset_x - sx1, offset_y - sy1);
-	}
+	treePaint<Block, Node>(painter, x, y, w, h, scale, m_x, m_y, m_depth, m_root, emptyNode(m_depth));
 	m_readLock->unlock();
-}
-
-inline void TreeLife::drawNode(CanvasPainter *painter, Node *node_ul, Node *node_ur, Node *node_dl, Node *node_dr, int x1, int y1, int x2, int y2, size_t depth, size_t scale, int offset_x, int offset_y)
-{
-	int len = 1 << depth;
-	if (x1 < len && y1 < len)
-		drawNode(painter, node_ul, x1, y1, qMin(x2, len - 1), qMin(y2, len - 1), depth, scale, offset_x, offset_y);
-	if (x2 >= len && y1 < len)
-		drawNode(painter, node_ur, qMax(x1 - len, 0), y1, x2 - len, qMin(y2, len - 1), depth, scale, offset_x + len, offset_y);
-	if (x1 < len && y2 >= len)
-		drawNode(painter, node_dl, x1, qMax(y1 - len, 0), qMin(x2, len - 1), y2 - len, depth, scale, offset_x, offset_y + len);
-	if (x2 >= len && y2 >= len)
-		drawNode(painter, node_dr, qMax(x1 - len, 0), qMax(y1 - len, 0), x2 - len, y2 - len, depth, scale, offset_x + len, offset_y + len);
-}
-
-void TreeLife::drawNode(CanvasPainter *painter, Node *node, int x1, int y1, int x2, int y2, size_t depth, size_t scale, int offset_x, int offset_y)
-{
-	if (depth + scale == Block::DEPTH)
-	{
-		if (depth == 0)
-			painter->drawGrid(offset_x + x1, offset_y + y1, reinterpret_cast<Block *>(node)->population > 0);
-		else
-		{
-			for (int x = x1; x <= x2; x++)
-				for (int y = y1; y <= y2; y++)
-				{
-					int state;
-					if (scale)
-					{
-						state = 0;
-						for (int i = x * (1 << scale); i < (x + 1) * (1 << scale); i++)
-							for (int j = y * (1 << scale); j < (y + 1) * (1 << scale); j++)
-								state |= reinterpret_cast<Block *>(node)->get(i, j) > 0;
-					}
-					else
-						state = reinterpret_cast<Block *>(node)->get(x, y);
-					painter->drawGrid(offset_x + x, offset_y + y, state);
-				}
-		}
-	}
-	else if (depth == 0)
-		painter->drawGrid(offset_x + x1, offset_y + y1, node->population > 0);
-	else
-		drawNode(painter, node->ul, node->ur, node->dl, node->dr, x1, y1, x2, y2, depth - 1, scale, offset_x, offset_y);
 }
 
 void TreeLife::runStep()

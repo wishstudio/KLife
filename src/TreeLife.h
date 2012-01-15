@@ -63,8 +63,6 @@ private:
 	inline Node *newNode(size_t depth);
 	Node *&emptyNode(size_t depth);
 	void deleteNode(Node *node, size_t depth);
-	inline void drawNode(CanvasPainter *painter, Node *node_ul, Node *node_ur, Node *node_dl, Node *node_dr, int x1, int y1, int x2, int y2, size_t depth, size_t scale, int offset_x, int offset_y);
-	void drawNode(CanvasPainter *painter, Node *node, int x1, int y1, int x2, int y2, size_t depth, size_t scale, int offset_x, int offset_y);
 	void runNode(Node *&p, Node *node, Node *up, Node *down, Node *left, Node *right, Node *upleft, Node *upright, Node *downleft, Node *downright, size_t depth);
 	virtual void run();
 
