@@ -59,7 +59,7 @@ private:
 	Node *runNode(Node *node, size_t depth);
 
 	QMutex *m_readLock, *m_writeLock;
-	bool m_running;
+	volatile bool m_running;
 
 	HashTable<Block> *m_blockHash;
 	HashTable<Node> *m_nodeHash;

@@ -172,6 +172,9 @@ HashLife::HashLife()
 	  m_x(0), m_y(0), m_generation(0)
 {
 	Node *e = reinterpret_cast<Node *>(m_blockHash->get(0, 0, 0, 0));
+	m_emptyNode.resize(Block::DEPTH + 1);
+	for (size_t i = 0; i < Block::DEPTH; i++)
+		m_emptyNode[i] = NULL;
 	m_emptyNode[Block::DEPTH] = e;
 	m_depth = Block::DEPTH + 1;
 	m_root = m_nodeHash->get(e, e, e, e);
