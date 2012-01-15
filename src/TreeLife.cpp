@@ -26,7 +26,7 @@
 #include "TreeUtils.h"
 #include "Utils.h"
 
-REGISTER_ALGORITHM(TreeLife)
+//REGISTER_ALGORITHM(TreeLife)
 
 // node flags
 #define CHANGED       0  // This node has changed since last iteration
@@ -63,7 +63,7 @@ public:
 		return TEST_BIT(data, y * Block::SIZE + x) > 0;
 	}
 
-	inline bool visible(TreeLife *, size_t) const
+	inline bool visible(TreeLife *) const
 	{
 		return population > 0;
 	}

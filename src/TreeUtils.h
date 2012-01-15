@@ -165,7 +165,7 @@ void treePaintNode(Algorithm *algorithm, CanvasPainter *painter, Node *node, int
 	{
 		Block *block = reinterpret_cast<Block *>(node);
 		if (depth == 0)
-			painter->drawGrid(offset_x + x1, offset_y + y1, block->visible(algorithm, depth));
+			painter->drawGrid(offset_x + x1, offset_y + y1, block->visible(algorithm));
 		else
 		{
 			for (int x = x1; x <= x2; x++)
@@ -186,7 +186,7 @@ void treePaintNode(Algorithm *algorithm, CanvasPainter *painter, Node *node, int
 		}
 	}
 	else if (depth == 0)
-		painter->drawGrid(offset_x + x1, offset_y + y1, node->visible(algorithm, depth));
+		painter->drawGrid(offset_x + x1, offset_y + y1, node->visible(algorithm, depth + scale));
 	else
 		treePaintNode<Algorithm, Block, Node>(algorithm, painter, node->ul, node->ur, node->dl, node->dr, x1, y1, x2, y2, depth - 1, scale, offset_x, offset_y);
 }

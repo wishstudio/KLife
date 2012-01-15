@@ -54,7 +54,7 @@ struct Block
 		return child[(y << 1) | x];
 	}
 
-	inline bool visible(HashLife *, size_t depth)
+	inline bool visible(HashLife *)
 	{
 		return population > 0;
 	}
