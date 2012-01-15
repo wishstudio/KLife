@@ -224,7 +224,7 @@ void HashLife::setGrid(const BigInteger &x, const BigInteger &y, int state)
 		c[3] = block->child[3];
 		c[cid] = state;
 		p = reinterpret_cast<Node *>(m_blockHash->get(c[0], c[1], c[2], c[3]));
-		while (depth++ < Block::DEPTH)
+		while (depth++ < m_depth)
 		{
 			Node *c[4], *node = stack[depth];
 			c[0] = node->child[0];
