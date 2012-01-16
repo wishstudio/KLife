@@ -42,8 +42,8 @@ public:
 	virtual QString name() { return "HashLife"; }
 	virtual bool acceptRule(Rule *rule) { return rule->type() == Rule::Life; }
 
-	virtual void setReceiveRect(const BigInteger &x, const BigInteger &y, quint64 w, quint64 h) {}
-	virtual void receive(DataChannel *channel) {}
+	virtual void setReceiveRect(const BigInteger &x, const BigInteger &y, quint64 w, quint64 h);
+	virtual void receive(DataChannel *channel);
 	virtual int grid(const BigInteger &x, const BigInteger &y) { Q_UNUSED(x); Q_UNUSED(y); return 0; } // TODO: Who use this now?
 	virtual void setGrid(const BigInteger &x, const BigInteger &y, int state);
 	virtual void clearGrid() {}
@@ -71,6 +71,10 @@ private:
 	BigInteger m_x, m_y;
 	BigInteger m_generation;
 	size_t m_increment;
+
+	// DataChannel related
+	BigInteger mc_x, mc_y;
+	quint64 mc_w, mc_h;
 
 	friend class Node;
 };

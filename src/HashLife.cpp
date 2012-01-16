@@ -181,7 +181,7 @@ HashLife::HashLife()
 	for (size_t i = 0; i < Block::DEPTH; i++)
 		m_emptyNode[i] = NULL;
 	m_emptyNode[Block::DEPTH] = e;
-	m_root = m_nodeHash->get(e, e, e, e);
+	m_root = emptyNode(Block::DEPTH + 1);
 	m_depth = Block::DEPTH + 1;
 	expand(); // run() requires m_depth >= Block::DEPTH + 2
 }
@@ -192,6 +192,52 @@ HashLife::~HashLife()
 	delete m_writeLock;
 	delete m_blockHash;
 	delete m_nodeHash;
+}
+
+void HashLife::setReceiveRect(const BigInteger &x, const BigInteger &y, quint64 w, quint64 h)
+{
+	mc_x = x;
+	mc_y = y;
+	mc_w = w;
+	mc_h = h;
+}
+
+void HashLife::receive(DataChannel *channel)
+{
+	//m_writeLock->lock();
+	//m_readLock->lock();
+	// out of range
+	// TODO: optimization
+	BigInteger x1 = mc_x - m_x, y1 = mc_y - m_y, x2 = x1 + BigInteger(mc_w - 1), y2 = y1 + BigInteger(mc_h - 1);
+	while (x1.sgn() < 0 || x2.sgn() < 0 || x2.bitCount() > m_depth || y1.sgn() < 0 || y2.sgn() < 0 || y2.bitCount() > m_depth)
+	{
+		expand();
+		x1 = mc_x - m_x;
+		y1 = mc_y - m_y;
+		x2 = x1 + BigInteger(mc_w - 1);
+		y2 = y1 + BigInteger(mc_h - 1);
+	}
+
+	BigInteger x = mc_x, y = mc_y;
+	int state;
+	quint64 cnt;
+	while (channel->receive(&state, &cnt), state != DATACHANNEL_EOF)
+	{
+		if (state == DATACHANNEL_EOLN)
+		{
+			x = mc_x;
+			y += cnt;
+		}
+		else
+			for (int i = 0; i < cnt; i++)
+			{
+				setGrid(x, y, state);
+				x += 1;
+			}
+	}
+	//m_readLock->unlock();
+	//m_writeLock->unlock();
+	emit gridChanged();
 }
 
 void HashLife::setGrid(const BigInteger &x, const BigInteger &y, int state)
@@ -368,35 +414,27 @@ void HashLife::run()
 	timer.start();
 	m_running = true;
 	m_writeLock->lock();
+	m_readLock->lock();
+	while (m_increment + 2 > m_depth)
+		expand();
 	Node *e = emptyNode(m_depth - 2);
+	// Test boundary to be empty, or we have to expand() to guarantee the result fits in the boundary
 	// This requires m_depth to be at least Block::DEPTH + 2
 	if ((m_root->ul->ul != e || m_root->ul->ur != e || m_root->ul->dl != e)
 		|| (m_root->ur->ul != e || m_root->ur->ur != e || m_root->ur->dr != e)
 		|| (m_root->dl->ul != e || m_root->dl->dl != e || m_root->dl->dr != e)
 		|| (m_root->dr->ur != e || m_root->dr->dl != e || m_root->dr->dr != e))
-	{
-		m_readLock->lock();
 		expand();
-		m_readLock->unlock();
-	}
-	if (m_increment + 2 > m_depth)
-	{
-		m_readLock->lock();
-		for (size_t i = m_depth; i < m_increment + 2; i++)
-			expand();
-		m_readLock->unlock();
-	}
-	Node *nroot = runNode(m_root, m_depth);
-	// The depth of RESULT is exactly one smaller than m_depth, expand it
-	// This is nearly identical to code in expand()
-	// except this do nothing with m_x and m_y
-	// since they are already correct
-	e = emptyNode(m_depth - 2); // m_depth could be changed due to expand() so we recalculate
-	Node *nul = m_nodeHash->get(e, e, e, nroot->ul);
-	Node *nur = m_nodeHash->get(e, e, nroot->ur, e);
-	Node *ndl = m_nodeHash->get(e, nroot->dl, e, e);
-	Node *ndr = m_nodeHash->get(nroot->dr, e, e, e);
-	Node *new_root = m_nodeHash->get(nul, nur, ndl, ndr);
+	// To make the depth of RESULT equal to m_depth, we first expand the universe
+	// This is nearly identical to code in expand() except we don't need to touch m_x and m_y
+	e = emptyNode(m_depth - 1);
+	Node *nul = m_nodeHash->get(e, e, e, m_root->ul);
+	Node *nur = m_nodeHash->get(e, e, m_root->ur, e);
+	Node *ndl = m_nodeHash->get(e, m_root->dl, e, e);
+	Node *ndr = m_nodeHash->get(m_root->dr, e, e, e);
+	Node *nroot = m_nodeHash->get(nul, nur, ndl, ndr);
+	m_readLock->unlock();
+	Node *new_root = runNode(nroot, m_depth + 1);
 	m_readLock->lock();
 	m_root = new_root;
 	m_readLock->unlock();
