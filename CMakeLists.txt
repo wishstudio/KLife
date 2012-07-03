@@ -1,5 +1,5 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 2.8.6)
+
+set(CMAKE_AUTOMOC true)
 
 add_subdirectory(src)
-
-macro_display_feature_log()

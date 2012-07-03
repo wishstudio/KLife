@@ -17,13 +17,11 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-#include <KGlobal>
-
 #include "AbstractAlgorithm.h"
 #include "AlgorithmManager.h"
 #include "Rule.h"
 
-K_GLOBAL_STATIC(AlgorithmManager, globalAlgorithmManager)
+Q_GLOBAL_STATIC(AlgorithmManager, globalAlgorithmManager)
 
 AlgorithmManager::AlgorithmManager()
 {
@@ -33,7 +31,7 @@ AlgorithmManager::AlgorithmManager()
 
 AlgorithmManager *AlgorithmManager::self()
 {
-	return globalAlgorithmManager;
+    return globalAlgorithmManager();
 }
 
 void AlgorithmManager::setRule(Rule *rule)

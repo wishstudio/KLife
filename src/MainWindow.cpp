@@ -20,13 +20,7 @@
 #include <QFileDialog>
 #include <QFormLayout>
 #include <QLabel>
-
-#include <KApplication>
-#include <KAction>
-#include <KActionCollection>
-#include <KLocale>
-#include <KStandardAction>
-#include <KStatusBar>
+#include <QStatusBar>
 
 #include "AbstractAlgorithm.h"
 #include "AlgorithmManager.h"
@@ -36,7 +30,7 @@
 #include "RuleLife.h"
 
 MainWindow::MainWindow(QWidget *parent)
-	: KXmlGuiWindow(parent)
+    : QMainWindow(parent)
 {
 	statusBar()->setSizeGripEnabled(true);
 	setupActions();
@@ -51,10 +45,10 @@ MainWindow::MainWindow(QWidget *parent)
 		layout->setLabelAlignment(Qt::AlignLeft);
 		m_generation = new QLabel();
 		m_generation->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
-		layout->addRow(new QLabel(i18n("Generation: ")), m_generation);
+        layout->addRow(new QLabel(tr("Generation: ")), m_generation);
 		m_population = new QLabel();
 		m_population->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
-		layout->addRow(new QLabel(i18n("Population: ")), m_population);
+        layout->addRow(new QLabel(tr("Population: ")), m_population);
 		form->setLayout(layout);
 		statusBar()->addWidget(form);
 	}
@@ -85,10 +79,10 @@ MainWindow::MainWindow(QWidget *parent)
 		layout->setLabelAlignment(Qt::AlignLeft);
 		m_rule = new QLabel();
 		m_rule->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
-		layout->addRow(new QLabel(i18n("Rule: ")), m_rule);
+        layout->addRow(new QLabel(tr("Rule: ")), m_rule);
 		m_algorithm = new QLabel();
 		m_algorithm->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
-		layout->addRow(new QLabel(i18n("Algorithm: ")), m_algorithm);
+        layout->addRow(new QLabel(tr("Algorithm: ")), m_algorithm);
 		form->setLayout(layout);
 		statusBar()->addWidget(form);
 	}
@@ -136,14 +130,14 @@ void MainWindow::newAction()
 
 void MainWindow::openAction()
 {
-	QString fileName = QFileDialog::getOpenFileName(this, i18n("Open pattern"), QString(), FileFormatManager::fileFilter());
+    QString fileName = QFileDialog::getOpenFileName(this, tr("Open pattern"), QString(), FileFormatManager::fileFilter());
 	if (!FileFormatManager::readFile(fileName))
 		return;
 }
 
 void MainWindow::setupActions()
 {
-	KAction *newAction = new KAction(this);
+/*	KAction *newAction = new KAction(this);
 	newAction->setText(i18n("&New pattern..."));
 	newAction->setIcon(KIcon("document-new"));
 	newAction->setShortcut(Qt::CTRL + Qt::Key_N);
@@ -159,5 +153,5 @@ void MainWindow::setupActions()
 
 	KStandardAction::quit(kapp, SLOT(quit()), actionCollection());
 
-	setupGUI();
+    setupGUI();*/
 }

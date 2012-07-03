@@ -22,8 +22,6 @@
 
 #include <QDebug>
 
-#include <gmp.h>
-
 class QDebug;
 class QString;
 class BigInteger
@@ -55,7 +53,7 @@ public:
 	template <typename T>
 	inline T lowbits(size_t count) const
 	{
-		T ret = 0;
+/*		T ret = 0;
 		int c = 0, n = 0;
 		while (count > GMP_LIMB_BITS)
 		{
@@ -63,29 +61,34 @@ public:
 			count -= GMP_LIMB_BITS;
 			c += GMP_LIMB_BITS;
 		}
-		return ret | ((mpz_getlimbn(data, n) & ((1 << count) - 1)) << c);
+        return ret | ((mpz_getlimbn(data, n) & ((1 << count) - 1)) << c);*/
+        return 0;
 	}
 
 	BigInteger operator + (const BigInteger &num) const;
 	BigInteger operator + (int num) const;
-	BigInteger operator + (unsigned long num) const;
+    BigInteger operator + (uint num) const;
+    BigInteger operator + (ulong num) const;
 	BigInteger& operator += (const BigInteger &num);
 	BigInteger& operator += (int num);
 
 	BigInteger operator - (const BigInteger &num) const;
 	BigInteger operator - (int num) const;
-	BigInteger operator - (unsigned long num) const;
+    BigInteger operator - (uint num) const;
+    BigInteger operator - (ulong num) const;
 	BigInteger& operator -= (const BigInteger &num);
 	BigInteger& operator -= (int num);
 
 	BigInteger operator * (int num) const;
 	BigInteger operator / (int num) const;
 
-	BigInteger operator << (size_t num) const;
-	BigInteger& operator <<= (size_t num);
+    BigInteger operator << (int num) const;
+    BigInteger operator << (uint num) const;
+    BigInteger& operator <<= (uint num);
 
-	BigInteger operator >> (size_t num) const;
-	BigInteger& operator >>= (size_t num);
+    BigInteger operator >> (int num) const;
+    BigInteger operator >> (uint num) const;
+    BigInteger& operator >>= (uint num);
 
 	bool operator == (const BigInteger &num) const;
 	bool operator == (int num) const;
@@ -100,16 +103,13 @@ public:
 	bool operator >= (const BigInteger &num) const;
 	bool operator >= (int num) const;
 
-	friend QDebug operator << (QDebug dbg, const BigInteger &num)
+/*	friend QDebug operator << (QDebug dbg, const BigInteger &num)
 	{
 		char *str = mpz_get_str(NULL, 10, num.data);
 		dbg.nospace() << str;
 		delete str;
 		return dbg.space();
-	}
-
-private:
-	mpz_t data;
+    }*/
 };
 
 #endif

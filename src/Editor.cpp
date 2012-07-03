@@ -26,19 +26,13 @@
 #include <QScrollBar>
 #include <QToolBar>
 
-#include <KAction>
-#include <KActionCollection>
-#include <KIcon>
-#include <KLocale>
-#include <KXmlGuiWindow>
-
 #include "AbstractAlgorithm.h"
 #include "AlgorithmManager.h"
 #include "CanvasPainter.h"
 #include "DataChannel.h"
 #include "Editor.h"
 
-static const size_t maxScalePixel = 4;
+static const uint maxScalePixel = 4;
 // Scale ratio is: 2^scale: 2^scalePixel
 // Max scale: 1: 16
 
@@ -48,8 +42,8 @@ Editor::Editor(QWidget *parent)
 	  m_drawing(false), m_editMode(DrawFreehand),
 	  m_scale(0), m_scalePixel(maxScalePixel)
 {
-	QToolBar *toolbar = new QToolBar();
-	KAction *stepAction = new KAction(this);
+/*	QToolBar *toolbar = new QToolBar();
+    KAction *stepAction = new KAction(this);
 	stepAction->setText(i18n("Run a single step"));
 	stepAction->setIcon(KIcon("arrow-right"));
 	stepAction->setToolTip("Run a single step");
@@ -100,7 +94,7 @@ Editor::Editor(QWidget *parent)
 	static_cast<KXmlGuiWindow *>(parent)->actionCollection()->addAction("draw-circle", circleAction);
 	connect(circleAction, SIGNAL(triggered()), this, SLOT(circleAction()));
 	editTools->addAction(circleAction);
-	toolbar->addAction(circleAction);
+    toolbar->addAction(circleAction);*/
 
 	m_canvas = new QWidget();
 	m_canvas->setMouseTracking(true);
@@ -122,7 +116,7 @@ Editor::Editor(QWidget *parent)
 	QGridLayout *layout = new QGridLayout();
 	layout->setVerticalSpacing(0);
 	layout->setHorizontalSpacing(0);
-	layout->addWidget(toolbar, 0, 0);
+//	layout->addWidget(toolbar, 0, 0);
 	layout->addWidget(m_canvas, 1, 0);
 	layout->addWidget(m_vertScroll, 1, 1);
 	layout->addWidget(m_horiScroll, 2, 0);
@@ -281,21 +275,21 @@ void Editor::resetViewPoint()
 	setViewPoint(m_view_x, m_view_y);
 }
 
-void Editor::scaleView(int scaleDelta, size_t anchor_x, size_t anchor_y)
+void Editor::scaleView(int scaleDelta, uint anchor_x, uint anchor_y)
 {
 	if (scaleDelta)
 	{
-		size_t old_scale = m_scale, old_scalePixel = m_scalePixel;
+        uint old_scale = m_scale, old_scalePixel = m_scalePixel;
 		if (scaleDelta > 0)
 		{
-			size_t d = qMin<size_t>(m_scale, scaleDelta);
+            uint d = qMin<uint>(m_scale, scaleDelta);
 			m_scale -= d;
-			m_scalePixel = qMin(maxScalePixel, m_scalePixel + scaleDelta - d);
+            m_scalePixel = qMin<uint>(maxScalePixel, m_scalePixel + scaleDelta - d);
 		}
 		else
 		{
-			size_t d = qMin<size_t>(m_scalePixel, -scaleDelta);
-			m_scalePixel -= d;
+            uint d = qMin<uint>(m_scalePixel, -scaleDelta);
+            m_scalePixel -= d;
 			m_scale += -scaleDelta - d;
 		}
 		// Formula:
@@ -460,7 +454,7 @@ bool Editor::eventFilter(QObject *obj, QEvent *event)
 		{
 		case QEvent::Paint:
 		{
-			size_t scale = qMax(m_scale, 0UL);
+            uint scale = qMax(m_scale, 0U);
 			// Calculate grid size
 			int y1 = 0, y2 = m_vertGridCount;
 			if (!AlgorithmManager::algorithm()->isVerticalInfinity())
@@ -474,7 +468,7 @@ bool Editor::eventFilter(QObject *obj, QEvent *event)
 				x1 = qMax(x1, static_cast<int>((m_rect_x1 >> scale) - m_view_x));
 				x2 = qMin(x2, static_cast<int>((m_rect_x2 >> scale) - m_view_x));
 			}
-			CanvasPainter painter(m_canvas, m_view_x, m_view_y, x1, x2, y1, y2, qMax(m_scale, 0UL), m_scalePixel);
+            CanvasPainter painter(m_canvas, m_view_x, m_view_y, x1, x2, y1, y2, qMax(m_scale, 0U), m_scalePixel);
 			if (m_drawing)
 			{
 				if (m_editMode == DrawLine)

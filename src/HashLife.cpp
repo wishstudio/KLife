@@ -130,12 +130,10 @@ struct Node
 	}
 };
 
-template <typename T>
+template <typename T, typename subtype>
 class HashTable
 {
 public:
-	typedef __typeof__(T::child[0]) subtype;
-
 	HashTable()
 	{
 		memset(data, 0, sizeof data);
@@ -152,7 +150,7 @@ public:
 			}
 	}
 
-	T *get(subtype c0, subtype c1, subtype c2, subtype c3)
+    T *get(subtype c0, subtype c1, subtype c2, subtype c3)
 	{
 		uint h = T::hash(c0, c1, c2, c3) % SIZE;
 		for (T *p = data[h]; p; p = p->next)
@@ -172,7 +170,7 @@ private:
 
 HashLife::HashLife()
 	: m_readLock(new QMutex()), m_writeLock(new QMutex()), m_running(false),
-	  m_blockHash(new HashTable<Block>()), m_nodeHash(new HashTable<Node>()),
+      m_blockHash(new HashTable<Block, uchar>()), m_nodeHash(new HashTable<Node, Node *>()),
 	  m_x(0), m_y(0), m_generation(0)
 {
 	m_increment = 0; // TODO
@@ -254,8 +252,8 @@ void HashLife::setGrid(const BigInteger &x, const BigInteger &y, int state)
 		my_x = x - m_x;
 		my_y = y - m_y;
 	}
-	Node *p = m_root, *stack[m_depth + 1];
-	int cid_stack[m_depth + 1];
+    Node *p = m_root, **stack = new Node *[m_depth + 1];
+    int *cid_stack = new int[m_depth + 1];
 	size_t depth = m_depth;
 	while (depth > Block::DEPTH)
 	{
@@ -288,6 +286,8 @@ void HashLife::setGrid(const BigInteger &x, const BigInteger &y, int state)
 		}
 		m_root = p;
 	}
+    delete stack;
+    delete cid_stack;
 	m_writeLock->unlock();
 	emit gridChanged();
 }
@@ -347,7 +347,7 @@ Node *HashLife::runNode(Node *node, size_t depth)
 		return node->result;
 	if (depth == Block::DEPTH + 1)
 	{
-		__typeof__(Block::child[0]) nul, nur, ndl, ndr;
+        uchar nul, nur, ndl, ndr;
 		Block::runStep(AlgorithmManager::rule(), nul, nur, ndl, ndr, reinterpret_cast<Block *>(node->ul), reinterpret_cast<Block *>(node->ur), reinterpret_cast<Block *>(node->dl), reinterpret_cast<Block *>(node->dr));
 		return node->result = reinterpret_cast<Node *>(m_blockHash->get(nul, nur, ndl, ndr));
 	}

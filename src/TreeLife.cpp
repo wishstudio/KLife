@@ -359,7 +359,7 @@ void TreeLife::setGrid(const BigInteger &x, const BigInteger &y, int state)
 		my_x = x - m_x;
 		my_y = y - m_y;
 	}
-	Node *p = m_root, *stack[m_depth + 1];
+    Node *p = m_root, **stack = new Node *[m_depth + 1];
 	size_t depth = m_depth;
 	while (depth > Block::DEPTH)
 	{
@@ -392,7 +392,8 @@ void TreeLife::setGrid(const BigInteger &x, const BigInteger &y, int state)
 	if (sx == Block::SIZE - 1)
 		SET_BIT(block->flag, RIGHT_CHANGED);
 	while (++depth <= m_depth)
-		computeNodeInfo(stack[depth], depth);
+        computeNodeInfo(stack[depth], depth);
+    delete stack;
 	m_writeLock->unlock();
 	emit gridChanged();
 }

@@ -20,38 +20,35 @@
 #include <QFile>
 #include <QFileInfo>
 
-#include <KLocale>
-#include <KGlobal>
-
 #include "AbstractAlgorithm.h"
 #include "AbstractFileFormat.h"
 #include "AlgorithmManager.h"
 #include "FileFormatManager.h"
 
-K_GLOBAL_STATIC(FileFormatManager, globalFileFormatManager)
+Q_GLOBAL_STATIC(FileFormatManager, globalFileFormatManager)
 
 FileFormatManager *FileFormatManager::self()
 {
-	return globalFileFormatManager;
+    return globalFileFormatManager();
 }
 
 void FileFormatManager::registerFileFormat(AbstractFileFormat *format)
 {
 	QList<QString> f = format->supportedFormats();
-	globalFileFormatManager->filters.append(";;");
-	globalFileFormatManager->filters.append(format->formatName() + " (");
+    globalFileFormatManager()->filters.append(";;");
+    globalFileFormatManager()->filters.append(format->formatName() + " (");
 	foreach (QString fm, f)
 	{
-		globalFileFormatManager->formats[fm] = format;
-		globalFileFormatManager->filters.append(" *." + fm);
-		globalFileFormatManager->allExtensions.append(" *." + fm);
+        globalFileFormatManager()->formats[fm] = format;
+        globalFileFormatManager()->filters.append(" *." + fm);
+        globalFileFormatManager()->allExtensions.append(" *." + fm);
 	}
-	globalFileFormatManager->filters.append(")");
+    globalFileFormatManager()->filters.append(")");
 }
 
 QString FileFormatManager::fileFilter()
 {
-	return i18n("All supported formats") + "(" + globalFileFormatManager->allExtensions + ")" + globalFileFormatManager->filters;
+    return tr("All supported formats") + "(" + globalFileFormatManager()->allExtensions + ")" + globalFileFormatManager()->filters;
 }
 
 bool FileFormatManager::readFile(QString fileName)
@@ -59,8 +56,8 @@ bool FileFormatManager::readFile(QString fileName)
 	QFileInfo info(fileName);
 	QString suffix = info.suffix();
 	AbstractFileFormat *format;
-	if (globalFileFormatManager->formats.count(suffix))
-		format = globalFileFormatManager->formats[suffix];
+    if (globalFileFormatManager()->formats.count(suffix))
+        format = globalFileFormatManager()->formats[suffix];
 	else
 		return false;
 	QFile file(fileName);

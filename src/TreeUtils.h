@@ -47,7 +47,7 @@ void treePaintNode(CanvasPainter *painter, Node *node, int x1, int y1, int x2, i
 // are unique, when depth > endDepth
 // After this walkdown, we can guarantee all the coordinates fit in ints.
 template <typename Algorithm, typename Block, typename Node>
-inline void treePaint(Algorithm *algorithm, CanvasPainter *painter, const BigInteger &x, const BigInteger &y, int w, int h, size_t scale, const BigInteger &m_x, const BigInteger &m_y, size_t m_depth, Node *m_root, Node *depth_emptyNode)
+inline void treePaint(Algorithm *algorithm, CanvasPainter *painter, const BigInteger &x, const BigInteger &y, int w, int h, uint scale, const BigInteger &m_x, const BigInteger &m_y, uint m_depth, Node *m_root, Node *depth_emptyNode)
 {
 	// Fill black background
 	painter->fillBlack();

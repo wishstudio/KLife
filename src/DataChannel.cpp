@@ -19,11 +19,9 @@
 
 #include <QMutex>
 
-#include <KGlobal>
-
 #include "DataChannel.h"
 
-K_GLOBAL_STATIC(DataChannel, globalDataChannel)
+Q_GLOBAL_STATIC(DataChannel, globalDataChannel)
 
 DataChannel::DataChannel()
 	: m_idle(true)
@@ -32,23 +30,23 @@ DataChannel::DataChannel()
 
 void DataChannel::transfer(DataSender *sender, DataReceiver *receiver)
 {
-	globalDataChannel->prepareTransfer(sender, receiver);
-	globalDataChannel->start();
-	sender->send(globalDataChannel);
+    globalDataChannel()->prepareTransfer(sender, receiver);
+    globalDataChannel()->start();
+    sender->send(globalDataChannel());
 }
 
 DataChannel *DataChannel::transferTo(DataReceiver *receiver)
 {
-	globalDataChannel->prepareTransfer(NULL, receiver);
-	globalDataChannel->start();
-	return globalDataChannel;
+    globalDataChannel()->prepareTransfer(NULL, receiver);
+    globalDataChannel()->start();
+    return globalDataChannel();
 }
 
 DataChannel *DataChannel::transferFrom(DataSender *sender)
 {
-	globalDataChannel->prepareTransfer(sender, NULL);
-	globalDataChannel->start();
-	return globalDataChannel;
+    globalDataChannel()->prepareTransfer(sender, NULL);
+    globalDataChannel()->start();
+    return globalDataChannel();
 }
 
 void DataChannel::send(int state, quint64 cnt)
@@ -129,7 +127,7 @@ void DataChannel::unlock()
 
 void DataChannel::prepareTransfer(DataSender *sender, DataReceiver *receiver)
 {
-	globalDataChannel->lock();
+    globalDataChannel()->lock();
 	m_sender = sender;
 	m_receiver = receiver;
 	bufPos = bufLen[0] = bufLen[1] = 0;

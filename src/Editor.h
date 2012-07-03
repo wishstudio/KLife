@@ -54,7 +54,7 @@ protected:
 private:
 	void resetViewPoint();
 	void viewResized();
-	void scaleView(int scaleDelta, size_t anchor_x, size_t anchor_y);
+    void scaleView(int scaleDelta, uint anchor_x, uint anchor_y);
 	void setGrid(int gridx, int gridy, int state, CanvasPainter *painter = NULL);
 	void setLine(int x1, int y1, int x2, int y2, int state, CanvasPainter *painter = NULL);
 	void setRectangle(int x1, int y1, int x2, int y2, int state, CanvasPainter *painter = NULL);
@@ -78,7 +78,7 @@ private:
 
 	int m_vertEdgeSpacing, m_horiEdgeSpacing;
 	int m_vertGridCount, m_horiGridCount;
-	size_t m_scale, m_scalePixel;
+    uint m_scale, m_scalePixel;
 };
 
 #endif

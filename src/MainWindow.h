@@ -20,12 +20,12 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
-#include <KXmlGuiWindow>
+#include <QMainWindow>
 
 class QLabel;
 class BigInteger;
 class Editor;
-class MainWindow: public KXmlGuiWindow
+class MainWindow: public QMainWindow
 {
 	Q_OBJECT
 

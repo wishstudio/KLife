@@ -29,7 +29,7 @@
 
 struct Block;
 struct Node;
-template <typename T> class HashTable;
+template <typename T, typename subtype> class HashTable;
 class QMutex;
 class HashLife: public AbstractAlgorithm, private MemoryManager
 {
@@ -62,8 +62,8 @@ private:
 	QMutex *m_readLock, *m_writeLock;
 	volatile bool m_running;
 
-	HashTable<Block> *m_blockHash;
-	HashTable<Node> *m_nodeHash;
+    HashTable<Block, uchar> *m_blockHash;
+    HashTable<Node, Node *> *m_nodeHash;
 	Node *m_root;
 	size_t m_depth;
 	QVector<Node *> m_emptyNode;
